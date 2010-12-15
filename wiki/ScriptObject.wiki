@@ -1,0 +1,11 @@
+#summary Description of SPAGS.Script objects
+
+{{{
+namespace SPAGS
+{
+  class Script
+  {
+    List<Function> DefinedFunctions;
+  }
+}
+}}}
