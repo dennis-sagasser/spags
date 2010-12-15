@@ -6,7 +6,7 @@ namespace SPAGS
   enum StatementType
   {
     Block, If, While, Return, FunctionCall, MethodCall,
-    AssignVariable, AssignAttribute, AssignField,
+    Assignment,
     VariableDeclaration
   }
 
@@ -28,24 +28,21 @@ namespace SPAGS
     Statement ElseDoThis; // may be null
   }
 
-  class Statement.AssignAttribute : Statement
+  class Statement.Assignment : Statement
   {
-  }
-
-  class Statement.AssignField : Statement
-  {
-  }
-
-  class Statement.AssignVariable : Statement
-  {
+    Expression Target; // Variable, Field, Attribute, ArrayIndex
+    TokenType AssignmentType; // Assign, AddAssign, SubtractAssign, Increment, Decrement
+    Expression Value; // may be null (Increment, Decrement)
   }
 
   class Statement.Return : Statement
   {
+    Expression Value; // may be null
   }
 
-  class Statement.FunctionCall : Statement
+  class Statement.Call : Statement
   {
+    Expression Target;
   }
 
   class Statement.MethodCall : Statement
