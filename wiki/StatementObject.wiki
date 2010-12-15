@@ -1,0 +1,61 @@
+#summary Description of Statement objects
+
+{{{
+namespace SPAGS
+{
+  enum StatementType
+  {
+    Block, If, While, Return, FunctionCall, MethodCall,
+    AssignVariable, AssignAttribute, AssignField,
+    VariableDeclaration
+  }
+
+  abstract class Statement
+  {
+    StatementType Type;
+  }
+
+  class Statement.Block : Statement
+  {
+    List<Statement> ChildStatements;
+    NameDictionary Scope;
+  }
+
+  class Statement.If : Statement
+  {
+    Expression IfThisIsTrue;
+    Statement ThenDoThis;
+    Statement ElseDoThis; // may be null
+  }
+
+  class Statement.AssignAttribute : Statement
+  {
+  }
+
+  class Statement.AssignField : Statement
+  {
+  }
+
+  class Statement.AssignVariable : Statement
+  {
+  }
+
+  class Statement.Return : Statement
+  {
+  }
+
+  class Statement.FunctionCall : Statement
+  {
+  }
+
+  class Statement.MethodCall : Statement
+  {
+  }
+
+  class Statement.While : Statement
+  {
+    Expression WhileThisIsTrue;
+    Statement KeepDoingThis;
+  }
+}
+}}}
