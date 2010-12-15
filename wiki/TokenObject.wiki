@@ -45,6 +45,7 @@ namespace SPAGS
 
   abstract class Token
   {
+    TokenType Type;
   }
 }
 }}}
