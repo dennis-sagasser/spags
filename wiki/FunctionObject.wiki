@@ -1,0 +1,11 @@
+#summary Description of Function objects
+
+{{{
+namespace SPAGS
+{
+  class Function : INameHolder
+  {
+    Statement.Block Body;
+  }
+}
+}}}
