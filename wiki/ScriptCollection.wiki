@@ -1,0 +1,10 @@
+#summary Description of ScriptCollection objects.
+
+{{{
+namespace SPAGS
+{
+  class ScriptCollection
+  {
+  }
+}
+}}}
