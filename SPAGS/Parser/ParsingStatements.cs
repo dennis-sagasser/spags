@@ -173,7 +173,7 @@ namespace SPAGS
                     Token crementToken = token;
                     AdvanceToken();
                     AdvanceToken(TokenType.Semicolon);
-                    return new Statement.Assign(left, null, token.Type);
+                    return new Statement.Assign(left, null, crementToken.Type);
 
                 default:
                     throw new Exception("unexpected " + token);
