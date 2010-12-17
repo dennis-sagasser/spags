@@ -75,14 +75,19 @@ namespace SPAGS
 
         void WriteScript(Script script, TextWriter output, int indent)
         {
-            Indented(output, indent, "SCRIPT \"" + script.Name + "\":");
+            Indented(output, indent, "=== SCRIPT \"" + script.Name + "\" ===");
             foreach (Function func in script.DefinedFunctions)
             {
-                Indented(output, indent + 1, "DEFINE FUNCTION \"" + func.Name + "\":");
-                Indented(output, indent + 2, "RETURN TYPE:");
-                WriteValueType(func.Signature.ReturnType, output, indent + 3);
-                Indented(output, indent + 2, "BODY:");
-                WriteStatement(func.Body, output, indent + 3);
+                Indented(output, indent, "DEFINE FUNCTION \"" + func.Name + "\":");
+                Indented(output, indent + 1, "RETURN TYPE:");
+                WriteValueType(func.Signature.ReturnType, output, indent + 2);
+                foreach (ParameterDef param in func.Signature.Parameters)
+                {
+                    Indented(output, indent+1, "PARAMETER \"" + param.Name + "\":");
+                    WriteValueType(param.Type, output, indent + 2);
+                }
+                Indented(output, indent + 1, "FUNCTION BODY:");
+                WriteStatement(func.Body, output, indent + 2);
             }
             Indented(output, indent, "");
         }
@@ -107,6 +112,8 @@ namespace SPAGS
                             case TokenType.Decrement:
                                 Indented(output, indent, "DECREMENT:");
                                 break;
+                            default:
+                                throw new Exception("Unexpected AssignType: " + assign.AssignType);
                         }
                         WriteExpression(assign.Target, output, indent + 1);
                     }
@@ -123,6 +130,8 @@ namespace SPAGS
                             case TokenType.SubtractAssign:
                                 Indented(output, indent, "SUBTRACT-ASSIGN:");
                                 break;
+                            default:
+                                throw new Exception("Unexpected AssignType: " + assign.AssignType);
                         }
                         WriteExpression(assign.Target, output, indent + 1);
                         WriteExpression(assign.Value, output, indent + 1);
@@ -132,7 +141,7 @@ namespace SPAGS
                     Statement.Block block = (Statement.Block)stmt;
                     foreach (Statement child in block.ChildStatements)
                     {
-                        WriteStatement(child, output, indent + 1);
+                        WriteStatement(child, output, indent);
                     }
                     break;
                 case StatementType.If:
@@ -164,12 +173,10 @@ namespace SPAGS
                     foreach (Variable var in varDef.Variables)
                     {
                         Indented(output, indent, "DECLARE VARIABLE \"" + var.Name + "\":");
-                        Indented(output, indent+1, "TYPE:");
-                        WriteValueType(var.Type, output, indent +2);
+                        WriteValueType(var.Type, output, indent +1);
                         if (var.InitialValue != null)
                         {
-                            Indented(output, indent+1, "VALUE:");
-                            WriteExpression(var.InitialValue, output, indent+2);
+                            WriteExpression(var.InitialValue, output, indent+1);
                         }
                     }
                     break;
@@ -196,8 +203,23 @@ namespace SPAGS
                     WriteExpression(allocArray.Length, output, indent+2);
                     break;
                 case ExpressionType.ArrayIndex:
+                    Expression.ArrayIndex arrayIndex = (Expression.ArrayIndex)expr;
+                    Indented(output, indent, "ARRAY LOOKUP:");
+                    // Target[Index]
+                    WriteExpression(arrayIndex.Target, output, indent+1);
+                    WriteExpression(arrayIndex.Index, output, indent+1);
                     break;
                 case ExpressionType.Attribute:
+                    Expression.Attribute attr = (Expression.Attribute)expr;
+                    if (attr.Target == null)
+                    {
+                        Indented(output, indent, "STATIC ATTRIBUTE \"" + attr.TheStructType.Name + "." + attr.TheAttribute.Name + "\"");
+                    }
+                    else
+                    {
+                        Indented(output, indent, "ATTRIBUTE \"" + attr.TheStructType.Name + "." + attr.TheAttribute.Name + "\":");
+                        WriteExpression(attr.Target, output, indent+1);
+                    }
                     break;
                 case ExpressionType.BinaryOperator:
                     WriteBinaryOperator((Expression.BinaryOperator)expr, output, indent);
@@ -208,10 +230,9 @@ namespace SPAGS
                     WriteExpression(call.CallingOn, output, indent+1);
                     if (call.Parameters.Count != 0)
                     {
-                        Indented(output, indent + 1, "PARAMETERS:");
                         foreach (Expression param in call.Parameters)
                         {
-                            WriteExpression(param, output, indent + 2);
+                            WriteExpression(param, output, indent + 1);
                         }
                     }
                     break;
@@ -225,9 +246,12 @@ namespace SPAGS
                     break;
                 case ExpressionType.EnumValue:
                     Expression.EnumValue enumValue = (Expression.EnumValue)expr;
-                    Indented(output, indent, "ENUM \"" + enumValue.TheValue.Name + "\"");
+                    Indented(output, indent, "ENUM \"" + enumValue.TheValue.OwnerType.Name + "." + enumValue.TheValue.Name + "\"");
                     break;
                 case ExpressionType.Field:
+                    Expression.Field field = (Expression.Field)expr;
+                    Indented(output, indent, "FIELD \"" + field.TheStructType.Name + "." + field.TheField.Name + "\":");
+                    WriteExpression(field.Target, output, indent + 1);
                     break;
                 case ExpressionType.FloatLiteral:
                     Expression.FloatLiteral floatLiteral = (Expression.FloatLiteral)expr;
@@ -242,6 +266,16 @@ namespace SPAGS
                     Indented(output, indent, intLiteral.Value.ToString());
                     break;
                 case ExpressionType.Method:
+                    Expression.Method method = (Expression.Method)expr;
+                    if (method.Target == null)
+                    {
+                        Indented(output, indent, "STATIC METHOD \"" + method.TheStructType.Name + "." + method.TheMethod.Name + "\"");
+                    }
+                    else
+                    {
+                        Indented(output, indent, "METHOD \"" + method.TheStructType.Name + "." + method.TheMethod.Name + "\":");
+                        WriteExpression(method.Target, output, indent + 1);
+                    }
                     break;
                 case ExpressionType.Null:
                     Indented(output, indent, "NULL");
@@ -258,6 +292,9 @@ namespace SPAGS
                 case ExpressionType.Variable:
                     Expression.Variable var = (Expression.Variable)expr;
                     Indented(output, indent, "VARIABLE \"" + var.TheVariable.Name + "\"");
+                    break;
+                default:
+                    Indented(output, indent, expr.ToString());
                     break;
             }
         }
