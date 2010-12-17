@@ -33,13 +33,37 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AGS.Types, Version=3.2.0.99, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\AGSLua\AGS3.2\AGS.Types.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="Constant.cs" />
+    <Compile Include="Expression.cs" />
+    <Compile Include="Function.cs" />
+    <Compile Include="Parser\Parser_Main.cs" />
+    <Compile Include="Parser\ParsingExpressions.cs" />
+    <Compile Include="Parser\ParsingPreprocessor.cs" />
+    <Compile Include="Parser\ParsingSettings.cs" />
+    <Compile Include="Parser\ParsingStatements.cs" />
+    <Compile Include="Parser\ParsingTokenStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Script.cs" />
+    <Compile Include="ScriptCollection.cs" />
+    <Compile Include="Statement.cs" />
+    <Compile Include="Token.cs" />
+    <Compile Include="Util\EditorUsageException.cs" />
+    <Compile Include="Util\INameHolder.cs" />
+    <Compile Include="Util\LiteralCache.cs" />
+    <Compile Include="ValueTypes\ArrayType.cs" />
+    <Compile Include="ValueTypes\EnumType.cs" />
+    <Compile Include="ValueTypes\StructType.cs" />
+    <Compile Include="ValueTypes\ValueType.cs" />
+    <Compile Include="Variable.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
