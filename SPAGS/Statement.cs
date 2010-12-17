@@ -230,16 +230,16 @@ namespace SPAGS
 
         public class Assign : Statement
         {
-            public Assign(Expression target, Expression value, Token assignToken)
+            public Assign(Expression target, Expression value, TokenType assignType)
                 : base(StatementType.Assign)
             {
                 Target = target;
                 Value = value;
-                AssignToken = assignToken;
+                AssignType = assignType;
             }
             public readonly Expression Target;
             public readonly Expression Value;
-            public readonly Token AssignToken;
+            public readonly TokenType AssignType;
             public override IEnumerable<Function> YieldFunctions()
             {
                 foreach (Function func in base.YieldFunctions())
@@ -254,15 +254,26 @@ namespace SPAGS
             }            public override void WriteTo(TextWriter output, int indent)
             {
                 Target.WriteTo(output);
-                switch(AssignToken.Type)
+                switch(AssignType)
                 {
                     case TokenType.Increment:
-                    case TokenType.Decrement:
-                        output.Write(AssignToken + ";");
+                        output.Write("++;");
                         return;
+                    case TokenType.Decrement:
+                        output.Write("--;");
+                        return;
+                    case TokenType.Assign:
+                        output.Write(" = ");
+                        break;
+                    case TokenType.AddAssign:
+                        output.Write(" += ");
+                        break;
+                    case TokenType.SubtractAssign:
+                        output.Write(" -= ");
+                        break;
                 }
-                output.Write(" " + AssignToken + " ");
                 Value.WriteTo(output);
+                output.Write(";");
             }
         }
 

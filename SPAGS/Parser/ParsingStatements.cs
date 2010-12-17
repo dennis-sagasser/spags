@@ -166,14 +166,14 @@ namespace SPAGS
                     AdvanceToken();
                     Expression right = AdvanceExpression();
                     AdvanceToken(TokenType.Semicolon);
-                    return new Statement.Assign(left, right, assignToken);
+                    return new Statement.Assign(left, right, assignToken.Type);
 
                 case TokenType.Increment:
                 case TokenType.Decrement:
                     Token crementToken = token;
                     AdvanceToken();
                     AdvanceToken(TokenType.Semicolon);
-                    return new Statement.Assign(left, null, token);
+                    return new Statement.Assign(left, null, token.Type);
 
                 default:
                     throw new Exception("unexpected " + token);
