@@ -76,6 +76,36 @@ namespace SPAGS
         void WriteScript(Script script, TextWriter output, int indent)
         {
             Indented(output, indent, "=== SCRIPT \"" + script.Name + "\" ===");
+            foreach (Variable var in script.DefinedVariables)
+            {
+                Indented(output, indent, "DECLARE VARIABLE \"" + var.Name + "\":");
+                WriteValueType(var.Type, output, indent+1);
+                if (var.InitialValue != null)
+                {
+                    WriteExpression(var.InitialValue, output, indent + 1);
+                }
+            }
+            foreach (Constant.Expression constant in script.DefinedConstantExpressions)
+            {
+                Indented(output, indent, "DEFINE CONSTANT \"" + constant.Name + "\":");
+                WriteExpression(constant.TheExpression, output, indent+1);
+            }
+            foreach (EnumType enumType in script.DefinedEnums)
+            {
+                Indented(output, indent, "DEFINE ENUM \"" + enumType.Name + "\":");
+                foreach (EnumType.Value enumValue in enumType.Entries)
+                {
+                    int value;
+                    enumValue.TryGetIntValue(out value);
+                    Indented(output, indent+1, enumValue.Name + " (" + value + ")");
+                }
+            }
+            foreach (StructType structType in script.DefinedStructs)
+            {
+                string name = "STRUCT";
+                if (structType.IsManaged) name = "MANAGED " + name;
+                Indented(output, indent, name + " \"" + structType.Name + "\":");
+            }
             foreach (Function func in script.DefinedFunctions)
             {
                 Indented(output, indent, "DEFINE FUNCTION \"" + func.Name + "\":");
@@ -391,9 +421,7 @@ namespace SPAGS
                     else
                     {
                         Indented(output, indent, "STATIC ARRAY:");
-                        Indented(output, indent + 1, "TYPE:");
                         WriteValueType(arrayType.ElementType, output, indent + 1);
-                        Indented(output, indent + 1, "LENGTH:");
                         WriteExpression(arrayType.LengthExpression, output, indent + 1);
                     }
                     break;
@@ -417,7 +445,21 @@ namespace SPAGS
                     break;
                 case ValueType.ValueTypeCategory.Struct:
                     StructType structType = (StructType)valueType;
-                    Indented(output, indent, "STRUCT \"" + structType.Name + "\"");
+                    if (structType.IsInternalString)
+                    {
+                        Indented(output, indent, "STRING");
+                    }
+                    else
+                    {
+                        if (structType.IsManaged)
+                        {
+                            Indented(output, indent, "MANAGED STRUCT \"" + structType.Name + "\"");
+                        }
+                        else
+                        {
+                            Indented(output, indent, "STRUCT \"" + structType.Name + "\"");
+                        }
+                    }
                     break;
                 case ValueType.ValueTypeCategory.Void:
                     Indented(output, indent, "VOID");
