@@ -97,9 +97,36 @@ namespace SPAGS
                     break;
                 case StatementType.Assign:
                     Statement.Assign assign = (Statement.Assign)stmt;
-                    Indented(output, indent, "ASSIGN:");
-                    WriteExpression(assign.Target, output, indent + 1);
-                    WriteExpression(assign.Value, output, indent + 1);
+                    if (assign.Value == null)
+                    {
+                        switch (assign.AssignType)
+                        {
+                            case TokenType.Increment:
+                                Indented(output, indent, "INCREMENT:");
+                                break;
+                            case TokenType.Decrement:
+                                Indented(output, indent, "DECREMENT:");
+                                break;
+                        }
+                        WriteExpression(assign.Target, output, indent + 1);
+                    }
+                    else
+                    {
+                        switch (assign.AssignType)
+                        {
+                            case TokenType.Assign:
+                                Indented(output, indent, "ASSIGN:");
+                                break;
+                            case TokenType.AddAssign:
+                                Indented(output, indent, "ADD-ASSIGN:");
+                                break;
+                            case TokenType.SubtractAssign:
+                                Indented(output, indent, "SUBTRACT-ASSIGN:");
+                                break;
+                        }
+                        WriteExpression(assign.Target, output, indent + 1);
+                        WriteExpression(assign.Value, output, indent + 1);
+                    }
                     break;
                 case StatementType.Block:
                     Statement.Block block = (Statement.Block)stmt;
