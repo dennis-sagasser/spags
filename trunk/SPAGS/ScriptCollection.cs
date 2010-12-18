@@ -50,9 +50,6 @@ namespace SPAGS
                 GlobalNamespace.Add(new Constant.TokenSequence("AGS_NEW_STRINGS", new Token[] { }));
                 GlobalNamespace.Add(new Constant.TokenSequence("AGS_SUPPORTS_IFVER", new Token[] { }));
             }
-            GlobalNamespace.Add(new Constant.Expression("AGS_MAX_CHARACTERS", Token.IntegerLiteral.Get(100).Expression));
-            GlobalNamespace.Add(new Constant.Expression("AGS_MAX_VIEWS", Token.IntegerLiteral.Get(100).Expression));
-            GlobalNamespace.Add(new Constant.Expression("AGS_MAX_FRAMES_PER_LOOP", Token.IntegerLiteral.Get(100).Expression));
 
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
             {
