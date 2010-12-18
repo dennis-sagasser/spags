@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
-using ActualStructType = SPAGS.StructType;
+using ActualStructType = SPAGS.ValueType.Struct;
 using ActualVariable = SPAGS.Variable;
-using ActualEnumValue = SPAGS.EnumType.Value;
+using ActualEnumValue = SPAGS.EnumValue;
 using ActualConstant = SPAGS.Constant.Expression;
 using ActualFunction = SPAGS.Function;
-using ActualAttribute = SPAGS.StructType.Attribute;
-using ActualField = SPAGS.StructType.Field;
-using ActualMethod = SPAGS.StructType.Method;
+using ActualAttribute = SPAGS.StructMember.Attribute;
+using ActualField = SPAGS.StructMember.Field;
+using ActualMethod = SPAGS.StructMember.Method;
 
 namespace SPAGS
 {
@@ -247,7 +247,7 @@ namespace SPAGS
                         {
                             throw new Exception(v.Name + " is not an array");
                         }
-                        return ((ArrayType)v.Type).ElementType;
+                        return ((ValueType.Array)v.Type).ElementType;
                     case ExpressionType.Attribute:
                         ActualAttribute attr = ((Expression.Attribute)Target).TheAttribute;
                         if (!attr.IsArray)
@@ -261,7 +261,7 @@ namespace SPAGS
                         {
                             throw new Exception(field.Name + " is not an array field");
                         }
-                        return ((ArrayType)field.Type).ElementType;
+                        return ((ValueType.Array)field.Type).ElementType;
                     default:
                         throw new Exception("unrecognised array: " + this);
                 }
@@ -761,7 +761,7 @@ namespace SPAGS
             }
             public override ValueType GetValueType()
             {
-                return new ArrayType(ElementType, Length);
+                return new ValueType.Array(ElementType, Length);
             }
             public override IEnumerable<Expression> YieldSubExpressions()
             {

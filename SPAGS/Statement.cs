@@ -131,13 +131,13 @@ namespace SPAGS
             public override void WriteTo(TextWriter output, int indent)
             {
                 ValueType vtype = Variables[0].Type;
-                if (vtype is ArrayType) vtype = ((ArrayType)vtype).ElementType;
+                if (vtype is ValueType.Array) vtype = ((ValueType.Array)vtype).ElementType;
                 output.Write(Variables[0].Type.Name + " ");
                 for (int i = 0; i < Variables.Count; i++)
                 {
                     if (i > 0) output.Write(", ");
                     output.Write(Variables[i].Name);
-                    ArrayType asArray = Variables[i].Type as ArrayType;
+                    ValueType.Array asArray = Variables[i].Type as ValueType.Array;
                     if (asArray != null)
                     {
                         output.Write('[');

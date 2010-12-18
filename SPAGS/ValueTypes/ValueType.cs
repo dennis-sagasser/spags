@@ -5,7 +5,7 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
-    public class ValueType
+    public partial class ValueType
     {
         public enum ValueTypeCategory
         {

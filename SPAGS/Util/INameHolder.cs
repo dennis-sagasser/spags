@@ -6,7 +6,7 @@ namespace SPAGS.Util
 {
     public enum NameHolderType
     {
-        BasicType, StructType, Function, Variable,
+        BasicType, Struct, Function, Variable,
         Constant, StructMember,
         Keyword,
         EnumType, EnumValue

@@ -98,7 +98,7 @@ namespace SPAGS
                     Token.KnownWord knownToken = (Token.KnownWord)token;
                     switch (knownToken.NameHolder.NameHolderType)
                     {
-                        case NameHolderType.StructType:
+                        case NameHolderType.Struct:
                             AdvanceToken(/* Token.KnownWord */);
                             Token nextToken = token;
                             preprocInjectedTokens.Enqueue(knownToken);
@@ -193,19 +193,19 @@ namespace SPAGS
                     if (token.Type == TokenType.RightSquareBracket)
                     {
                         AdvanceToken(/* TokenType.RightSquareBracket */);
-                        variableType = new ArrayType(valueType, null);
+                        variableType = new ValueType.Array(valueType, null);
                     }
                     else
                     {
-                        variableType = new ArrayType(valueType, AdvanceExpression());
+                        variableType = new ValueType.Array(valueType, AdvanceExpression());
                         AdvanceToken(TokenType.RightSquareBracket);
                     }
-                    if (valueType is StructType) ((StructType)valueType).InstantiatedArray = true;
+                    if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
                 }
                 else
                 {
                     variableType = valueType;
-                    if (valueType is StructType) ((StructType)valueType).Instantiated = true;
+                    if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                 }
                 Variable newVariable = new Variable(name, variableType, AdvancePossibleAssignment());
                 AddToScope(newVariable);

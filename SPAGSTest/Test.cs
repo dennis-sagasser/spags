@@ -39,9 +39,11 @@ namespace SPAGS
             {
                 case COMMAND_DUMP_SCRIPTS:
                     string path = Path.Combine(_editor.CurrentGame.DirectoryPath, DUMP_FILENAME);
+                    ScriptCollection scripts = new ScriptCollection(_editor);
                     using (TextWriter output = new StreamWriter(path))
                     {
-                        WriteAllScripts(output);
+                        WriteAllScripts(scripts, output);
+                        WriteGlobalNamespace(scripts, output);
                     }
                     MessageBox.Show(DUMP_FILENAME + " created!", "Script dump", MessageBoxButtons.OK);
                     break;
@@ -64,9 +66,8 @@ namespace SPAGS
             output.WriteLine(line);
         }
 
-        void WriteAllScripts(TextWriter output)
+        void WriteAllScripts(ScriptCollection scripts, TextWriter output)
         {
-            ScriptCollection scripts = new ScriptCollection(_editor);
             foreach (Script script in scripts.YieldScripts())
             {
                 WriteScript(script, output, 0);
@@ -87,24 +88,60 @@ namespace SPAGS
             }
             foreach (Constant.Expression constant in script.DefinedConstantExpressions)
             {
-                Indented(output, indent, "DEFINE CONSTANT \"" + constant.Name + "\":");
+                Indented(output, indent, "DEFINE CONSTANT EXPRESSION \"" + constant.Name + "\":");
                 WriteExpression(constant.TheExpression, output, indent+1);
             }
-            foreach (EnumType enumType in script.DefinedEnums)
+            foreach (ValueType.Enum enumType in script.DefinedEnums)
             {
                 Indented(output, indent, "DEFINE ENUM \"" + enumType.Name + "\":");
-                foreach (EnumType.Value enumValue in enumType.Entries)
+                foreach (EnumValue enumValue in enumType.Entries)
                 {
-                    int value;
-                    enumValue.TryGetIntValue(out value);
-                    Indented(output, indent+1, enumValue.Name + " (" + value + ")");
+                    Indented(output, indent+1, enumValue.Name + " = " + enumValue.Value);
                 }
             }
-            foreach (StructType structType in script.DefinedStructs)
+            foreach (ValueType.Struct structType in script.DefinedStructs)
             {
                 string name = "STRUCT";
                 if (structType.IsManaged) name = "MANAGED " + name;
-                Indented(output, indent, name + " \"" + structType.Name + "\":");
+                Indented(output, indent, "DEFINE " + name + " \"" + structType.Name + "\":");
+                foreach (StructMember member in structType.Members.EachOf<StructMember>())
+                {
+                    switch (member.MemberType)
+                    {
+                        case StructMemberType.Attribute:
+                            StructMember.Attribute attr = (StructMember.Attribute)member;
+                            name = "ATTRIBUTE";
+                            if (attr.IsArray)
+                            {
+                                name = "ARRAY " + name;
+                            }
+                            if (attr.IsStatic)
+                            {
+                                name = "STATIC " + name;
+                            }
+                            if (attr.IsReadOnly)
+                            {
+                                name = "READONLY " + name;
+                            }
+                            Indented(output, indent+1, name + " \"" + attr.Name + "\":");
+                            WriteValueType(attr.Type, output, indent+2);
+                            break;
+                        case StructMemberType.Field:
+                            StructMember.Field field = (StructMember.Field)member;
+                            Indented(output, indent+1, "FIELD \"" + field.Name + "\":");
+                            WriteValueType(field.Type, output, indent+2);
+                            break;
+                        case StructMemberType.Method:
+                            StructMember.Method method = (StructMember.Method)member;
+                            name = "METHOD";
+                            if (method.IsStatic)
+                            {
+                                name = "STATIC " + name;
+                            }
+                            Indented(output, indent+1, name + " \"" + method.Name + "\"");
+                            break;
+                    }
+                }
             }
             foreach (Function func in script.DefinedFunctions)
             {
@@ -411,7 +448,7 @@ namespace SPAGS
             switch (valueType.Category)
             {
                 case ValueType.ValueTypeCategory.Array:
-                    ArrayType arrayType = (ArrayType)valueType;
+                    ValueType.Array arrayType = (ValueType.Array)valueType;
                     if (arrayType.LengthExpression == null)
                     {
                         Indented(output, indent, "DYNAMIC ARRAY:");
@@ -432,7 +469,16 @@ namespace SPAGS
                     Indented(output, indent, "FUNCTION SIGNATURE");
                     break;
                 case ValueType.ValueTypeCategory.Int:
-                    Indented(output, indent, "INT");
+                    if (valueType is ValueType.Enum)
+                    {
+                        ValueType.Enum enumType = (ValueType.Enum)valueType;
+                        Indented(output, indent, "ENUM \"" + enumType.Name + "\"");
+
+                    }
+                    else
+                    {
+                        Indented(output, indent, "INT");
+                    }
                     break;
                 case ValueType.ValueTypeCategory.Null:
                     Indented(output, indent, "NULL");
@@ -444,7 +490,7 @@ namespace SPAGS
                     Indented(output, indent, "STRING");
                     break;
                 case ValueType.ValueTypeCategory.Struct:
-                    StructType structType = (StructType)valueType;
+                    ValueType.Struct structType = (ValueType.Struct)valueType;
                     if (structType.IsInternalString)
                     {
                         Indented(output, indent, "STRING");
@@ -464,6 +510,66 @@ namespace SPAGS
                 case ValueType.ValueTypeCategory.Void:
                     Indented(output, indent, "VOID");
                     break;
+            }
+        }
+
+
+        void WriteGlobalNamespace(ScriptCollection scripts, TextWriter output)
+        {
+            Indented(output, 0, "=== Global Namespace ===");
+            foreach (SPAGS.Util.INameHolder named in scripts.GlobalNamespace.Values)
+            {
+                switch (named.NameHolderType)
+                {
+                    case SPAGS.Util.NameHolderType.Constant:
+                        Constant constant = (Constant)named;
+                        if (constant is Constant.Expression)
+                        {
+                            Script script = ((Constant.Expression)constant).OwnerScript;
+                            Indented(output, 0, "CONSTANT \"" + constant.Name
+                                + "\" (" + (script == null ? "?" : script.Name) + ")");
+                        }
+                        break;
+                    case SPAGS.Util.NameHolderType.EnumType:
+                        ValueType.Enum enumType = (ValueType.Enum)named;
+                        Indented(output, 0, "ENUM TYPE \"" + enumType.Name
+                            + "\" (" + (enumType.OwnerScript == null ? "?" : enumType.OwnerScript.Name) + ")");
+                        break;
+                    case SPAGS.Util.NameHolderType.EnumValue:
+                        EnumValue enumValue = (EnumValue)named;
+                        ValueType.Enum type = enumValue.OwnerType;
+                        Indented(output, 0, "ENUM VALUE \"" + enumValue.Name
+                            + "\" (" + (type.OwnerScript == null ? "?" : type.OwnerScript.Name) + ")");
+                        break;
+                    case SPAGS.Util.NameHolderType.Function:
+                        Function func = (Function)named;
+                        Indented(output, 0, "FUNCTION \"" + func.Name + "\" ("
+                            + (func.OwnerScript == null ? "?" : func.OwnerScript.Name) + ")");
+                        break;
+                    case SPAGS.Util.NameHolderType.Struct:
+                        ValueType.Struct structType = (ValueType.Struct)named;
+                        if (structType.IsManaged)
+                        {
+                            Indented(output, 0, "MANAGED STRUCT \"" + structType.Name
+                                + "\" (" + (structType.OwnerScript == null ? "?" : structType.OwnerScript.Name) + ")");
+                        }
+                        else
+                        {
+                            Indented(output, 0, "STRUCT \"" + structType.Name
+                                + "\" (" + (structType.OwnerScript == null ? "?" : structType.OwnerScript.Name) + ")");
+                        }
+                        break;
+                    case SPAGS.Util.NameHolderType.Variable:
+                        Variable var = (Variable)named;
+                        Indented(output, 0, "VARIABLE \"" + var.Name + "\" ("
+                            + (var.ParentScript == null ? "?" : var.ParentScript.Name) + ")");
+                        break;
+
+                    case SPAGS.Util.NameHolderType.BasicType:
+                    case SPAGS.Util.NameHolderType.Keyword:
+                    case SPAGS.Util.NameHolderType.StructMember:
+                        break;
+                }
             }
         }
 

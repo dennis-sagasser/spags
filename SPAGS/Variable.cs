@@ -32,7 +32,7 @@ namespace SPAGS
         }
         public virtual void WriteTo(TextWriter output)
         {
-            ArrayType asArray = Type as ArrayType;
+            ValueType.Array asArray = Type as ValueType.Array;
             if (asArray != null)
             {
                 output.Write(asArray.ElementType.Name + " " + Name + "[");
