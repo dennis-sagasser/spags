@@ -94,12 +94,12 @@ namespace SPAGS
                     INameHolder nameHolder = ((Token.KnownWord)t).NameHolder;
                     switch (nameHolder.NameHolderType)
                     {
-                        case NameHolderType.StructType:
-                            return new Expression.StructType((StructType)nameHolder);
+                        case NameHolderType.Struct:
+                            return new Expression.StructType((ValueType.Struct)nameHolder);
                         case NameHolderType.Variable:
                             return new Expression.Variable((Variable)nameHolder);
                         case NameHolderType.EnumValue:
-                            return new Expression.EnumValue((EnumType.Value)nameHolder);
+                            return new Expression.EnumValue((EnumValue)nameHolder);
                         case NameHolderType.Constant:
                             return new Expression.Constant((Constant.Expression)nameHolder);
                         case NameHolderType.Function:
@@ -114,7 +114,7 @@ namespace SPAGS
                 case TokenType.New:
                     {
                         ValueType elementType = AdvanceValueType();
-                        if (elementType is StructType) ((StructType)elementType).InstantiatedArray = true;
+                        if (elementType is ValueType.Struct) ((ValueType.Struct)elementType).InstantiatedArray = true;
                         AdvanceToken(TokenType.LeftSquareBracket);
                         Expression length = AdvanceExpression();
                         AdvanceToken(TokenType.RightSquareBracket);
@@ -245,16 +245,16 @@ namespace SPAGS
                     if (left.Type == ExpressionType.StructType)
                     {
                         // static method or attribute
-                        StructType structType = ((Expression.StructType)left).TheStructType;
-                        StructType.Member staticMember;
-                        if (!structType.Members.TryGetValue2<StructType.Member>(dotWord.TheWord, out staticMember))
+                        ValueType.Struct structType = ((Expression.StructType)left).TheStructType;
+                        StructMember staticMember;
+                        if (!structType.Members.TryGetValue2<StructMember>(dotWord.TheWord, out staticMember))
                         {
                             throw new Exception("static method or attribute not found: " + structType.Name + "." + dotWord.TheWord);
                         }
                         switch (staticMember.MemberType)
                         {
                             case StructMemberType.Attribute:
-                                StructType.Attribute attr = (StructType.Attribute)staticMember;
+                                StructMember.Attribute attr = (StructMember.Attribute)staticMember;
                                 if (!attr.IsStatic)
                                 {
                                     throw new Exception(structType.Name + "." + attr.Name + " is not a static attribute");
@@ -263,7 +263,7 @@ namespace SPAGS
                             case StructMemberType.Field:
                                 throw new Exception(structType.Name + "." + staticMember.Name + " is a non-static field");
                             case StructMemberType.Method:
-                                StructType.Method method = (StructType.Method)staticMember;
+                                StructMember.Method method = (StructMember.Method)staticMember;
                                 if (!method.IsStatic)
                                 {
                                     throw new Exception(structType.Name + "." + method.Name + " is not a static method");
@@ -274,22 +274,22 @@ namespace SPAGS
                         }
                     }
                     ValueType leftType = left.GetValueType();
-                    StructType asStruct = leftType as StructType;
+                    ValueType.Struct asStruct = leftType as ValueType.Struct;
                     if (asStruct == null)
                     {
                         throw new Exception(leftType.Name + " type does not have a member ." + dotWord.TheWord);
                     }
                     else
                     {
-                        StructType.Member member;
-                        if (!asStruct.Members.TryGetValue2<StructType.Member>(dotWord.TheWord, out member))
+                        StructMember member;
+                        if (!asStruct.Members.TryGetValue2<StructMember>(dotWord.TheWord, out member))
                         {
                             throw new Exception("method/field/attribute not found: " + asStruct.Name + "." + dotWord.TheWord);
                         }
                         switch (member.MemberType)
                         {
                             case StructMemberType.Attribute:
-                                StructType.Attribute attr = (StructType.Attribute)member;
+                                StructMember.Attribute attr = (StructMember.Attribute)member;
                                 if (attr.IsStatic)
                                 {
                                     return new Expression.Attribute(asStruct, attr, null);
@@ -299,10 +299,10 @@ namespace SPAGS
                                     return new Expression.Attribute(asStruct, attr, left);
                                 }
                             case StructMemberType.Field:
-                                StructType.Field field = (StructType.Field)member;
+                                StructMember.Field field = (StructMember.Field)member;
                                 return new Expression.Field(asStruct, field, left);
                             case StructMemberType.Method:
-                                StructType.Method method = (StructType.Method)member;
+                                StructMember.Method method = (StructMember.Method)member;
                                 if (method.IsStatic)
                                 {
                                     return new Expression.Method(asStruct, method, null);

@@ -12,66 +12,70 @@ namespace SPAGS
         Attribute,
         Method
     }
-    public class StructType : ValueType.Named
+    public partial class ValueType
     {
-        public StructType(string name)
-            : base(name, ValueTypeCategory.Struct)
+        public class Struct : ValueType.Named
         {
-        }
-        public bool Instantiated;
-        public bool InstantiatedArray;
-        public Script OwnerScript;
-        public override NameHolderType NameHolderType { get { return NameHolderType.StructType; } }
-        public NameDictionary Members = new NameDictionary();
-        public override string ToString()
-        {
-            StringBuilder sb = new StringBuilder();
-            using (StringWriter output = new StringWriter(sb))
+            public Struct(string name)
+                : base(name, ValueTypeCategory.Struct)
             {
-                this.WriteTo(output);
             }
-            return sb.ToString();
-        }
-        public bool IsManaged;
-        public bool IsAutoPtr;
-        public bool IsInternalString;
-        protected void WriteTo(TextWriter output)
-        {
-            if (IsInternalString) output.Write("internalstring ");
-            if (IsAutoPtr) output.Write("autoptr ");
-            if (IsManaged) output.Write("managed ");
-            output.Write("struct " + Name + " {\n");
-            foreach (Member member in Members.EachOf<Member>())
-            {
-                output.Write("\t");
-                member.WriteTo(output);
-                output.Write("\n");
-            }
-            output.Write("};");
-        }
-        public abstract class Member : INameHolder
-        {
-            protected Member(string name)
-            {
-                this.name = name;
-            }
-            public object UserData;
-            public abstract StructMemberType MemberType { get; }
-            public NameHolderType NameHolderType { get { return NameHolderType.StructMember; } }
-            private string name;
-            public string Name { get { return name; } }
+            public bool Instantiated;
+            public bool InstantiatedArray;
+            public Script OwnerScript;
+            public override NameHolderType NameHolderType { get { return NameHolderType.Struct; } }
+            public NameDictionary Members = new NameDictionary();
             public override string ToString()
             {
                 StringBuilder sb = new StringBuilder();
                 using (StringWriter output = new StringWriter(sb))
                 {
-                    WriteTo(output);
+                    this.WriteTo(output);
                 }
                 return sb.ToString();
             }
-            public abstract void WriteTo(TextWriter output);
+            public bool IsManaged;
+            public bool IsAutoPtr;
+            public bool IsInternalString;
+            protected void WriteTo(TextWriter output)
+            {
+                if (IsInternalString) output.Write("internalstring ");
+                if (IsAutoPtr) output.Write("autoptr ");
+                if (IsManaged) output.Write("managed ");
+                output.Write("struct " + Name + " {\n");
+                foreach (StructMember member in Members.EachOf<StructMember>())
+                {
+                    output.Write("\t");
+                    member.WriteTo(output);
+                    output.Write("\n");
+                }
+                output.Write("};");
+            }
         }
-        public class Attribute : Member
+    }
+
+    public abstract class StructMember : INameHolder
+    {
+        protected StructMember(string name)
+        {
+            this.name = name;
+        }
+        public object UserData;
+        public abstract StructMemberType MemberType { get; }
+        public NameHolderType NameHolderType { get { return NameHolderType.StructMember; } }
+        private string name;
+        public string Name { get { return name; } }
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            using (StringWriter output = new StringWriter(sb))
+            {
+                WriteTo(output);
+            }
+            return sb.ToString();
+        }
+        public abstract void WriteTo(TextWriter output);
+        public class Attribute : StructMember
         {
             public Attribute(string name, ValueType type, bool isStatic, bool isArray, Function getter, Function setter)
                 : base(name)
@@ -102,7 +106,7 @@ namespace SPAGS
                 output.Write(";");
             }
         }
-        public class Field : Member
+        public class Field : StructMember
         {
             public Field(string name, ValueType type)
                 : base(name)
@@ -119,7 +123,7 @@ namespace SPAGS
                 output.Write(Type.Name + " " + Name + ";");
             }
         }
-        public class Method : Member
+        public class Method : StructMember
         {
             public Method(string name, Function function)
                 : base(name)

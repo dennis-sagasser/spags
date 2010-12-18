@@ -17,8 +17,8 @@ namespace SPAGS
         public NameDictionary Identifiers;
         public List<Function> DefinedFunctions = new List<Function>();
         public List<ScriptVariable> DefinedVariables = new List<ScriptVariable>();
-        public List<EnumType> DefinedEnums = new List<EnumType>();
-        public List<StructType> DefinedStructs = new List<StructType>();
+        public List<ValueType.Enum> DefinedEnums = new List<ValueType.Enum>();
+        public List<ValueType.Struct> DefinedStructs = new List<ValueType.Struct>();
         public List<Constant.Expression> DefinedConstantExpressions = new List<Constant.Expression>();
     }
 }

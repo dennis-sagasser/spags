@@ -56,6 +56,7 @@ namespace SPAGS
 
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
             {
+                /*
                 bool notExtraHeader = false;
                 foreach (AGS.Types.Script otherScript in editor.CurrentGame.Scripts)
                 {
@@ -69,22 +70,16 @@ namespace SPAGS
                 {
                     continue;
                 }
-                AddExtraHeader(agsScript.Text);
+                 */
+                AddGlobalScript(agsScript.FileName, agsScript.Text, "");
             }
 
             foreach (AGS.Types.Script agsScript in editor.CurrentGame.Scripts)
             {
                 if (agsScript.IsHeader) continue;
-                AGS.Types.Script header = null;
-                foreach (AGS.Types.Script otherScript in editor.CurrentGame.Scripts)
-                {
-                    if (otherScript.IsHeader && otherScript.Name == agsScript.Name)
-                    {
-                        header = otherScript;
-                    }
-                }
-                AddGlobalScript(agsScript.Name, agsScript.Text, header.Text);
+                AddGlobalScript(agsScript.FileName, "", agsScript.Text);
             }
+            /*
 
             foreach (AGS.Types.IRoom room in editor.CurrentGame.Rooms)
             {
@@ -103,11 +98,13 @@ namespace SPAGS
                 }
                 AddDialogScript(dialog.CachedConvertedScript);
             }
+            */
         }
 
 
         public IEnumerable<Script> YieldScripts()
         {
+            foreach (Script script in MainHeaders) yield return script;
             foreach (Script script in GlobalScripts) yield return script;
             foreach (Script script in DialogScripts) yield return script;
             foreach (Script script in RoomScripts.Values) yield return script;
@@ -191,12 +188,12 @@ namespace SPAGS
         public void AddRoomScript(AGS.Types.Room room)
         {
             NameDictionary roomVariables = new NameDictionary();
-            StructType hotspotType, objectType;
-            if (!GlobalNamespace.TryGetValue2<StructType>("Hotspot", out hotspotType))
+            ValueType.Struct hotspotType, objectType;
+            if (!GlobalNamespace.TryGetValue2<ValueType.Struct>("Hotspot", out hotspotType))
             {
                 throw new System.Exception("Hotspot type not found!");
             }
-            if (!GlobalNamespace.TryGetValue2<StructType>("Object", out objectType))
+            if (!GlobalNamespace.TryGetValue2<ValueType.Struct>("Object", out objectType))
             {
                 throw new System.Exception("Object type not found!");
             }

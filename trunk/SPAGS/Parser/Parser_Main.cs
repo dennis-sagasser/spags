@@ -54,10 +54,10 @@ namespace SPAGS
                         AdvanceToken(/* TokenType.Struct */);
                         INameHolder existing;
                         string structName = AdvanceName(out existing);
-                        StructType newStruct;
+                        ValueType.Struct newStruct;
                         if (existing != null)
                         {
-                            newStruct = existing as StructType;
+                            newStruct = existing as ValueType.Struct;
                             if (existing == null)
                             {
                                 throw new Exception("name already in use: " + structName);
@@ -65,7 +65,7 @@ namespace SPAGS
                         }
                         else
                         {
-                            newStruct = new StructType(structName);
+                            newStruct = new ValueType.Struct(structName);
                             Identifiers.Add(newStruct);
                         }
                         newStruct.OwnerScript = script;
@@ -76,7 +76,7 @@ namespace SPAGS
                         if (token.Type == TokenType.Extends)
                         {
                             AdvanceToken(/* TokenType.Extends */);
-                            StructType extending = AdvanceNameHolder<StructType>("name of struct to extend");
+                            ValueType.Struct extending = AdvanceNameHolder<ValueType.Struct>("name of struct to extend");
                             foreach (KeyValuePair<string,INameHolder> memberEntry in extending.Members)
                             {
                                 newStruct.Members.Add(memberEntry.Key, memberEntry.Value);
@@ -163,7 +163,7 @@ namespace SPAGS
                                 }
                                 AdvanceToken(TokenType.Semicolon);
 
-                                newStruct.Members.Add(new StructType.Attribute(attrName, attrType, mod_static, mod_array, getter, setter));
+                                newStruct.Members.Add(new StructMember.Attribute(attrName, attrType, mod_static, mod_array, getter, setter));
 
                                 Identifiers.Add(getter);
                                 if (!mod_readonly)
@@ -184,7 +184,7 @@ namespace SPAGS
                                 if (!mod_static) methodParams.Insert(0, new ParameterDef("this", newStruct, null));
                                 Function methodFunction = new Function(structName + "::" + name, valueType, methodParams);
                                 Identifiers.Add(methodFunction);
-                                StructType.Method method = new StructType.Method(name, methodFunction);
+                                StructMember.Method method = new StructMember.Method(name, methodFunction);
                                 method.IsStatic = mod_static;
                                 newStruct.Members.Add(method);
                                 continue;
@@ -197,14 +197,14 @@ namespace SPAGS
                                     AdvanceToken(/* TokenType.LeftSquareBracket */);
                                     Expression arrayLength = AdvanceExpression();
                                     AdvanceToken(TokenType.RightSquareBracket);
-                                    newStruct.Members.Add(new StructType.Field(name, new ArrayType(valueType, arrayLength)));
+                                    newStruct.Members.Add(new StructMember.Field(name, new ValueType.Array(valueType, arrayLength)));
 
-                                    if (valueType is StructType) ((StructType)valueType).InstantiatedArray = true;
+                                    if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
                                 }
                                 else
                                 {
-                                    newStruct.Members.Add(new StructType.Field(name, valueType));
-                                    if (valueType is StructType) ((StructType)valueType).Instantiated = true;
+                                    newStruct.Members.Add(new StructMember.Field(name, valueType));
+                                    if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                                 }
                                 if (token.Type == TokenType.Comma)
                                 {
@@ -224,17 +224,17 @@ namespace SPAGS
                     case TokenType.Enum:
                         {
                             AdvanceToken(/* TokenType.Enum */);
-                            EnumType enumType = new EnumType(AdvanceUnusedName());
+                            ValueType.Enum enumType = new ValueType.Enum(AdvanceUnusedName());
                             enumType.OwnerScript = script;
                             script.DefinedEnums.Add(enumType);
                             Identifiers.Add(enumType);
                             AdvanceToken(TokenType.LeftCurlyBrace);
-                            EnumType.Value previous = null;
+                            EnumValue previous = null;
                             while (token.Type != TokenType.RightCurlyBrace)
                             {
                                 string enumEntry = AdvanceUnusedName();
                                 Expression explicitValue = AdvancePossibleAssignment();
-                                EnumType.Value newValue = new EnumType.Value(enumType, enumEntry, explicitValue, previous);
+                                EnumValue newValue = new EnumValue(enumType, enumEntry, explicitValue, previous);
                                 enumType.Entries.Add(newValue);
                                 Identifiers.Add(newValue);
                                 previous = newValue;
@@ -338,20 +338,20 @@ namespace SPAGS
                                         if (token.Type == TokenType.RightSquareBracket)
                                         {
                                             AdvanceToken(/* TokenType.RightSquareBracket */);
-                                            individualValueType = new ArrayType(valueType, null);
+                                            individualValueType = new ValueType.Array(valueType, null);
                                         }
                                         else
                                         {
-                                            individualValueType = new ArrayType(valueType, AdvanceExpression());
+                                            individualValueType = new ValueType.Array(valueType, AdvanceExpression());
                                             AdvanceToken(TokenType.RightSquareBracket);
                                         }
-                                        if (!mod_import && valueType is StructType) ((StructType)valueType).InstantiatedArray = true;
+                                        if (!mod_import && valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
                                     }
                                     else
                                     {
                                         individualValueType = valueType;
                                         initialValue = AdvancePossibleAssignment();
-                                        if (!mod_import && valueType is StructType) ((StructType)valueType).Instantiated = true;
+                                        if (!mod_import && valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                                     }
 
                                     if (existingHolder != null)
@@ -399,13 +399,13 @@ namespace SPAGS
                             {
                                 AdvanceToken(/* TokenType.DoubleColon */);
                                 string memberName = AdvanceName();
-                                StructType implementingType;
-                                if (!Identifiers.TryGetValue2<StructType>(name, out implementingType))
+                                ValueType.Struct implementingType;
+                                if (!Identifiers.TryGetValue2<ValueType.Struct>(name, out implementingType))
                                 {
                                     throw new Exception("struct not found: " + name);
                                 }
-                                StructType.Method implementingMethod;
-                                if (!implementingType.Members.TryGetValue2<StructType.Method>(memberName, out implementingMethod))
+                                StructMember.Method implementingMethod;
+                                if (!implementingType.Members.TryGetValue2<StructMember.Method>(memberName, out implementingMethod))
                                 {
                                     throw new Exception("method not found: " + name + "." + memberName + "()");
                                 }
@@ -450,7 +450,7 @@ namespace SPAGS
                             }
                             else
                             {
-                                if (mod_array) valueType = new ArrayType(valueType, null);
+                                if (mod_array) valueType = new ValueType.Array(valueType, null);
                                 function = new Function(name, valueType, parameters);
                                 Identifiers.Add(function);
                             }
@@ -480,15 +480,15 @@ namespace SPAGS
 
                             if (extending)
                             {
-                                StructType thisStruct = (StructType)thisType;
-                                StructType.Method extenderMethod;
-                                if (thisStruct.Members.TryGetValue2<StructType.Method>(extenderName, out extenderMethod))
+                                ValueType.Struct thisStruct = (ValueType.Struct)thisType;
+                                StructMember.Method extenderMethod;
+                                if (thisStruct.Members.TryGetValue2<StructMember.Method>(extenderName, out extenderMethod))
                                 {
                                     extenderMethod.Function.Body = function.Body;
                                 }
                                 else
                                 {
-                                    extenderMethod = new StructType.Method(extenderName, function);
+                                    extenderMethod = new StructMember.Method(extenderName, function);
                                     extenderMethod.IsExtender = true;
                                     thisStruct.Members.Add(extenderMethod);
                                 }
@@ -523,7 +523,7 @@ namespace SPAGS
                 {
                     AdvanceToken(/* TokenType.LeftSquareBracket */);
                     AdvanceToken(TokenType.RightSquareBracket);
-                    parameterType = new ArrayType(parameterType, null);
+                    parameterType = new ValueType.Array(parameterType, null);
                 }
                 Expression parameterDefault = AdvancePossibleAssignment();
                 parameters.Add(new ParameterDef(parameterName, parameterType, parameterDefault));
