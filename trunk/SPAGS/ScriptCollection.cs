@@ -26,29 +26,32 @@ namespace SPAGS
             }
             if (DebugMode)
             {
-                GlobalNamespace.Add(new Constant.TokenSequence("DEBUG", new Token[] { }));
+                GlobalNamespace.Add(new Constant.Expression("DEBUG", new Expression.IntegerLiteral(1)));
             }
             if (StrictObjectOrientedMode)
             {
-                GlobalNamespace.Add(new Constant.TokenSequence("STRICT", new Token[] { }));
+                GlobalNamespace.Add(new Constant.Expression("STRICT", new Expression.IntegerLiteral(1)));
             }
             if (StrictStringMode)
             {
-                GlobalNamespace.Add(new Constant.TokenSequence("STRICT_STRINGS", new Token[] { }));
+                GlobalNamespace.Add(new Constant.Expression("STRICT_STRINGS", new Expression.IntegerLiteral(1)));
             }
             if (StrictAudioMode)
             {
-                GlobalNamespace.Add(new Constant.TokenSequence("STRICT_AUDIO", new Token[] { }));
+                GlobalNamespace.Add(new Constant.Expression("STRICT_AUDIO", new Expression.IntegerLiteral(1)));
             }
             if (RightAssociativity)
             {
                 parser.OverrideLeftToRight = true;
-                GlobalNamespace.Add(new Constant.TokenSequence("LRPRECEDENCE", new Token[] { }));
+            }
+            else
+            {
+                GlobalNamespace.Add(new Constant.Expression("LRPRECEDENCE", new Expression.IntegerLiteral(1)));
             }
             if (EngineVersion >= new System.Version("2.71"))
             {
-                GlobalNamespace.Add(new Constant.TokenSequence("AGS_NEW_STRINGS", new Token[] { }));
-                GlobalNamespace.Add(new Constant.TokenSequence("AGS_SUPPORTS_IFVER", new Token[] { }));
+                GlobalNamespace.Add(new Constant.Expression("AGS_NEW_STRINGS", new Expression.IntegerLiteral(1)));
+                GlobalNamespace.Add(new Constant.Expression("AGS_SUPPORTS_IFVER", new Expression.IntegerLiteral(1)));
             }
 
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
