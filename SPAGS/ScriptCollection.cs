@@ -71,16 +71,47 @@ namespace SPAGS
                 AddRoomScript(room, (AGS.Types.Room)editor.RoomController.CurrentRoom);
             }
 
-            /*
+            StringBuilder dialogScriptSB = new StringBuilder(@"#define DIALOG_NONE      0
+#define DIALOG_RUNNING   1
+#define DIALOG_STOP      2
+#define DIALOG_NEWROOM   100
+#define DIALOG_NEWTOPIC  12000
+
+_tryimport function dialog_request(int);
+int __dlgscript_tempval;
+
+function _run_dialog_request (int parmtr) {
+  game.stop_dialog_at_end = DIALOG_RUNNING;
+  dialog_request(parmtr);
+
+  if (game.stop_dialog_at_end == DIALOG_STOP) {
+    game.stop_dialog_at_end = DIALOG_NONE;
+    return -2;
+  }
+  if (game.stop_dialog_at_end >= DIALOG_NEWTOPIC) {
+    int tval = game.stop_dialog_at_end - DIALOG_NEWTOPIC;
+    game.stop_dialog_at_end = DIALOG_NONE;
+    return tval;
+  }
+  if (game.stop_dialog_at_end >= DIALOG_NEWROOM) {
+    int roomnum = game.stop_dialog_at_end - DIALOG_NEWROOM;
+    game.stop_dialog_at_end = DIALOG_NONE;
+    player.ChangeRoom(roomnum);
+    return -2;
+  }
+  game.stop_dialog_at_end = DIALOG_NONE;
+  return -1;
+}");
             foreach (AGS.Types.Dialog dialog in editor.CurrentGame.Dialogs)
             {
                 if (string.IsNullOrEmpty(dialog.CachedConvertedScript))
                 {
-                    throw new EditorUsageException("Unable to get dialog scripts: Game has unsaved changes");
+                    throw new EditorUsageException("Unable to get dialog scripts: Project must be re-built");
                 }
-                AddDialogScript(dialog.CachedConvertedScript);
+                dialogScriptSB.Append(dialog.CachedConvertedScript);
             }
-            */
+
+            AddGlobalScript("__DialogScripts.asc", "", dialogScriptSB.ToString());
         }
 
 
@@ -139,6 +170,8 @@ namespace SPAGS
         {
             Script newDialogScript = new Script("Dialog" + DialogScripts.Count + "Script");
             parser.Identifiers = new NameDictionary(GlobalNamespace);
+            parser.Identifiers.Add(new Variable("__dlgscript_tempval", ValueType.Int, null));
+            parser.Identifiers.Add(new Variable("_run_dialog_request", ValueType.Int, null));
             parser.ReadScript(scriptText, newDialogScript);
             DialogScripts.Add(newDialogScript);
         }

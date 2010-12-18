@@ -90,7 +90,7 @@ namespace SPAGS
                         AdvanceToken(TokenType.LeftCurlyBrace);
                         while (token.Type != TokenType.RightCurlyBrace)
                         {
-                            bool mod_readonly = false, mod_static = false, mod_import = false,
+                            bool mod_readonly = false, mod_static = false, mod_import = false, mod_tryimport = false,
                                 mod_protected = false, mod_writeprotected = false;
                             for (; ; )
                             {
@@ -107,6 +107,10 @@ namespace SPAGS
                                     case TokenType.Import:
                                         AdvanceToken(/* TokenType.Import */);
                                         mod_import = true;
+                                        continue;
+                                    case TokenType._TryImport:
+                                        AdvanceToken(/* TokenType._TryImport */);
+                                        mod_tryimport = true;
                                         continue;
                                     case TokenType.Protected:
                                         AdvanceToken(/* TokenType.Protected */);
@@ -281,11 +285,13 @@ namespace SPAGS
                     case TokenType.ReadOnly:
                     case TokenType.Protected:
                     case TokenType.Import:
+                    case TokenType._TryImport:
                     case TokenType.Static:
                     case TokenType.Const:
                     case TokenType.KnownWord:
                         {
-                            bool mod_static = false, mod_import = false, mod_readonly = false, mod_protected = false;
+                            bool mod_static = false, mod_import = false, mod_readonly = false, mod_protected = false,
+                                mod_tryimport = false;
                             for (; ; )
                             {
                                 switch (token.Type)
@@ -301,6 +307,10 @@ namespace SPAGS
                                     case TokenType.Import:
                                         AdvanceToken(/* TokenType.Import */);
                                         mod_import = true;
+                                        continue;
+                                    case TokenType._TryImport:
+                                        AdvanceToken(/* TokenType._TryImport */);
+                                        mod_tryimport = true;
                                         continue;
                                     case TokenType.ReadOnly:
                                         AdvanceToken(/* TokenType.ReadOnly */);
@@ -345,13 +355,13 @@ namespace SPAGS
                                             individualValueType = new ValueType.Array(valueType, AdvanceExpression());
                                             AdvanceToken(TokenType.RightSquareBracket);
                                         }
-                                        if (!mod_import && valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
+                                        if (!(mod_import || mod_tryimport) && valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
                                     }
                                     else
                                     {
                                         individualValueType = valueType;
                                         initialValue = AdvancePossibleAssignment();
-                                        if (!mod_import && valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
+                                        if (!(mod_import || mod_tryimport) && valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                                     }
 
                                     if (existingHolder != null)
@@ -368,9 +378,9 @@ namespace SPAGS
                                     else
                                     {
                                         ScriptVariable newVar = new ScriptVariable(name, individualValueType, initialValue);
-                                        newVar.Imported = mod_import;
-                                        newVar.Defined = !mod_import;
-                                        if (!mod_import)
+                                        newVar.Imported = mod_import || mod_tryimport;
+                                        newVar.Defined = !newVar.Imported;
+                                        if (!newVar.Imported)
                                         {
                                             newVar.OwnerScript = script;
                                             script.DefinedVariables.Add(newVar);
@@ -395,7 +405,7 @@ namespace SPAGS
 
                             ValueType thisType = null;
 
-                            if (!mod_import && token.Type == TokenType.DoubleColon)
+                            if (!(mod_import || mod_tryimport) && token.Type == TokenType.DoubleColon)
                             {
                                 AdvanceToken(/* TokenType.DoubleColon */);
                                 string memberName = AdvanceName();
@@ -457,7 +467,7 @@ namespace SPAGS
 
                             function.NoLoopCheck = mod_noloopcheck;
 
-                            if (mod_import)
+                            if (mod_import || mod_tryimport)
                             {
                                 AdvanceToken(TokenType.Semicolon);
                             }

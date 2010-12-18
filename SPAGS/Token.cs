@@ -42,7 +42,7 @@ namespace SPAGS
 
         Comma, Semicolon, DotDotDot, DoubleColon,
 
-        If, While, Return, Else, Import, Export, Managed, Struct, AutoPtr, InternalString, Extends,
+        If, While, Return, Else, Import, _TryImport, Export, Managed, Struct, AutoPtr, InternalString, Extends,
         NoLoopCheck, Attribute, Static, ReadOnly, Protected, WriteProtected, Const, Null, New, Enum,
 
         ConstantExpression,
@@ -209,6 +209,7 @@ namespace SPAGS
         public static readonly Keyword Return           = new Keyword("return", TokenType.Return);
         public static readonly Keyword Else             = new Keyword("else", TokenType.Else);
         public static readonly Keyword Import           = new Keyword("import", TokenType.Import);
+        public static readonly Keyword _TryImport       = new Keyword("_tryimport", TokenType._TryImport);
         public static readonly Keyword Export           = new Keyword("export", TokenType.Export);
         public static readonly Keyword Managed          = new Keyword("managed", TokenType.Managed);
         public static readonly Keyword Struct           = new Keyword("struct", TokenType.Struct);
@@ -233,6 +234,7 @@ namespace SPAGS
             yield return Return;
             yield return Else;
             yield return Import;
+            yield return _TryImport;
             yield return Export;
             yield return Managed;
             yield return Struct;

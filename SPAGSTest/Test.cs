@@ -38,14 +38,30 @@ namespace SPAGS
             switch (controlID)
             {
                 case COMMAND_DUMP_SCRIPTS:
-                    string path = Path.Combine(_editor.CurrentGame.DirectoryPath, DUMP_FILENAME);
-                    ScriptCollection scripts = new ScriptCollection(_editor);
-                    using (TextWriter output = new StreamWriter(path))
+                    foreach (Dialog dialog in _editor.CurrentGame.Dialogs)
                     {
-                        WriteAllScripts(scripts, output);
-                        WriteGlobalNamespace(scripts, output);
+                        if (String.IsNullOrEmpty(dialog.CachedConvertedScript))
+                        {
+                            MessageBox.Show("Please rebuild the game (e.g. by pressing F7) and try again.");
+                            return;
+                        }
                     }
-                    MessageBox.Show(DUMP_FILENAME + " created!", "Script dump", MessageBoxButtons.OK);
+
+                    try
+                    {
+                        string path = Path.Combine(_editor.CurrentGame.DirectoryPath, DUMP_FILENAME);
+                        ScriptCollection scripts = new ScriptCollection(_editor);
+                        using (TextWriter output = new StreamWriter(path))
+                        {
+                            WriteAllScripts(scripts, output);
+                            WriteGlobalNamespace(scripts, output);
+                        }
+                        MessageBox.Show(DUMP_FILENAME + " created!", "Script dump", MessageBoxButtons.OK);
+                    }
+                    catch (SPAGS.Util.EditorUsageException ex)
+                    {
+                        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                     break;
             }
         }
