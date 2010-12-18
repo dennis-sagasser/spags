@@ -235,11 +235,11 @@ namespace SPAGS
                     Statement.If conditional = (Statement.If)stmt;
                     Indented(output, indent, "IF:");
                     WriteExpression(conditional.IfThisIsTrue, output, indent + 1);
-                    Indented(output, indent, "THEN:");
+                    Indented(output, indent, "...THEN:");
                     WriteStatement(conditional.ThenDoThis, output, indent + 1);
                     if (conditional.ElseDoThis != null)
                     {
-                        Indented(output, indent, "ELSE:");
+                        Indented(output, indent, "...ELSE:");
                         WriteStatement(conditional.ElseDoThis, output, indent + 1);
                     }
                     break;
@@ -271,7 +271,7 @@ namespace SPAGS
                     Statement.While loop = (Statement.While)stmt;
                     Indented(output, indent, "WHILE:");
                     WriteExpression(loop.WhileThisIsTrue, output, indent + 1);
-                    Indented(output, indent, "DO:");
+                    Indented(output, indent, "...DO:");
                     WriteStatement(loop.KeepDoingThis, output, indent + 1);
                     break;
             }
