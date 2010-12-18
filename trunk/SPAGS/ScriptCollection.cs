@@ -53,21 +53,6 @@ namespace SPAGS
 
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
             {
-                /*
-                bool notExtraHeader = false;
-                foreach (AGS.Types.Script otherScript in editor.CurrentGame.Scripts)
-                {
-                    if (otherScript == agsScript)
-                    {
-                        notExtraHeader = true;
-                        break;
-                    }
-                }
-                if (notExtraHeader)
-                {
-                    continue;
-                }
-                 */
                 AddGlobalScript(agsScript.FileName, agsScript.Text, "");
             }
 
@@ -76,7 +61,6 @@ namespace SPAGS
                 if (agsScript.IsHeader) continue;
                 AddGlobalScript(agsScript.FileName, "", agsScript.Text);
             }
-            /*
 
             foreach (AGS.Types.IRoom room in editor.CurrentGame.Rooms)
             {
@@ -84,9 +68,10 @@ namespace SPAGS
                 {
                     throw new EditorUsageException("Prevented from loading room " + room.Number);
                 }
-                AddRoomScript((AGS.Types.Room)editor.RoomController.CurrentRoom);
+                AddRoomScript(room, (AGS.Types.Room)editor.RoomController.CurrentRoom);
             }
 
+            /*
             foreach (AGS.Types.Dialog dialog in editor.CurrentGame.Dialogs)
             {
                 if (string.IsNullOrEmpty(dialog.CachedConvertedScript))
@@ -182,7 +167,7 @@ namespace SPAGS
             }
         }
 
-        public void AddRoomScript(AGS.Types.Room room)
+        public void AddRoomScript(AGS.Types.IRoom unloadedRoom, AGS.Types.Room room)
         {
             NameDictionary roomVariables = new NameDictionary();
             ValueType.Struct hotspotType, objectType;
@@ -202,7 +187,7 @@ namespace SPAGS
             {
                 roomVariables.Add(new Variable(obj.Name, objectType, null));
             }
-            AddRoomScript(room.Number, room.Script.Text, roomVariables);
+            AddRoomScript(room.Number, unloadedRoom.Script.Text, roomVariables);
         }
         public void AddRoomScript(int roomNumber, string scriptText, NameDictionary roomVariables)
         {
