@@ -322,7 +322,7 @@ namespace SPAGS
                     break;
                 case ExpressionType.FloatLiteral:
                     Expression.FloatLiteral floatLiteral = (Expression.FloatLiteral)expr;
-                    Indented(output, indent, String.Format("{0.0}", floatLiteral.Value));
+                    Indented(output, indent, String.Format("{0:0.0}", floatLiteral.Value));
                     break;
                 case ExpressionType.Function:
                     Expression.Function func = (Expression.Function)expr;
