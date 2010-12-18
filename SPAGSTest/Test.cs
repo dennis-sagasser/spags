@@ -86,10 +86,30 @@ namespace SPAGS
                     WriteExpression(var.InitialValue, output, indent + 1);
                 }
             }
-            foreach (Constant.Expression constant in script.DefinedConstantExpressions)
+            foreach (Constant constant in script.DefinedConstants)
             {
-                Indented(output, indent, "DEFINE CONSTANT EXPRESSION \"" + constant.Name + "\":");
-                WriteExpression(constant.TheExpression, output, indent+1);
+                if (constant is Constant.Expression)
+                {
+                    Constant.Expression constantExpr = (Constant.Expression)constant;
+                    Indented(output, indent, "DEFINE CONSTANT EXPRESSION \"" + constantExpr.Name + "\":");
+                    WriteExpression(constantExpr.TheExpression, output, indent + 1);
+                }
+                else
+                {
+                    Constant.TokenSequence tokens = (Constant.TokenSequence)constant;
+                    if (tokens.Tokens.Count == 0)
+                    {
+                        Indented(output, indent, "DEFINE EMPTY CONSTANT \"" + tokens.Name + "\"");
+                    }
+                    else
+                    {
+                        Indented(output, indent, "DEFINE CONSTANT TOKEN SEQUENCE \"" + tokens.Name + "\":");
+                        foreach (Token token in tokens.Tokens)
+                        {
+                            Indented(output, indent + 1, token.ToString());
+                        }
+                    }
+                }
             }
             foreach (ValueType.Enum enumType in script.DefinedEnums)
             {
@@ -523,12 +543,8 @@ namespace SPAGS
                 {
                     case SPAGS.Util.NameHolderType.Constant:
                         Constant constant = (Constant)named;
-                        if (constant is Constant.Expression)
-                        {
-                            Script script = ((Constant.Expression)constant).OwnerScript;
-                            Indented(output, 0, "CONSTANT \"" + constant.Name
-                                + "\" (" + (script == null ? "?" : script.Name) + ")");
-                        }
+                        Indented(output, 0, "CONSTANT \"" + constant.Name
+                            + "\" (" + (constant.OwnerScript == null ? "?" : constant.OwnerScript.Name) + ")");
                         break;
                     case SPAGS.Util.NameHolderType.EnumType:
                         ValueType.Enum enumType = (ValueType.Enum)named;

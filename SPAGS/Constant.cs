@@ -18,6 +18,7 @@ namespace SPAGS
             get { return NameHolderType.Constant; }
         }
 
+        public Script OwnerScript;
         public bool Undefined;
 
         public class Expression : Constant
@@ -27,7 +28,6 @@ namespace SPAGS
             {
                 TheExpression = expression;
             }
-            public Script OwnerScript;
             public readonly SPAGS.Expression TheExpression;
             public object UserData;
             public override string ToString()
