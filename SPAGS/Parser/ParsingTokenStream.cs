@@ -355,7 +355,7 @@ namespace SPAGS
                                 // single-line comment
                                 for (; ; )
                                 {
-                                    if (pos++ >= endPos) return (token = Token.EndOfInput);
+                                    if (++pos >= endPos) return (token = Token.EndOfInput);
                                     if (source[pos] == '\n') break;
                                 }
                                 if (preprocLineMode) return (token = Token.EndOfInput);
