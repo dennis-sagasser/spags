@@ -19,6 +19,6 @@ namespace SPAGS
         public List<ScriptVariable> DefinedVariables = new List<ScriptVariable>();
         public List<ValueType.Enum> DefinedEnums = new List<ValueType.Enum>();
         public List<ValueType.Struct> DefinedStructs = new List<ValueType.Struct>();
-        public List<Constant.Expression> DefinedConstantExpressions = new List<Constant.Expression>();
+        public List<Constant> DefinedConstants = new List<Constant>();
     }
 }

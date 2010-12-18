@@ -103,7 +103,7 @@ namespace SPAGS
                         {
                             Constant.Expression constant = new Constant.Expression(defineName, constantExpression);
                             constant.OwnerScript = script;
-                            script.DefinedConstantExpressions.Add(constant);
+                            script.DefinedConstants.Add(constant);
                             if (preprocLevel == preprocSuccess)
                             {
                                 /*
@@ -129,6 +129,8 @@ namespace SPAGS
                             AdvanceToken();
                         }
                         Constant.TokenSequence fragment = new Constant.TokenSequence(defineName, readTokens);
+                        script.DefinedConstants.Add(fragment);
+                        fragment.OwnerScript = script;
                         if (preprocSuccess == preprocLevel)
                         {
                             /*
