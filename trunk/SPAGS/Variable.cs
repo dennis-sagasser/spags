@@ -15,7 +15,7 @@ namespace SPAGS
             InitialValue = initialValue;
         }
         public object UserData;
-        public readonly Script ParentScript;
+        public Script OwnerScript;
         public readonly ValueType Type;
         private readonly string name;
         public string Name { get { return name; } }
@@ -64,7 +64,6 @@ namespace SPAGS
             : base(name, valueType, initialValue)
         {
         }
-        public Script OwnerScript;
         public bool ReadOnly;
         public bool Imported;
         public bool Defined;

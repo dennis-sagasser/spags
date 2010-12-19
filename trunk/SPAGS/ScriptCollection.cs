@@ -58,6 +58,39 @@ namespace SPAGS
             Headers.Add(headerScript);
             return headerScript;
         }
+        public Script CompileGlobalVariablesScript(AGS.Types.IAGSEditor editor)
+        {
+            AGS.Types.Game game = (AGS.Types.Game)editor.CurrentGame;
+            IList<AGS.Types.GlobalVariable> globVars = game.GlobalVariables.ToList();
+            if (globVars.Count == 0) return null;
+            StringBuilder globVarsSB = new StringBuilder();
+            foreach (AGS.Types.GlobalVariable globVar in game.GlobalVariables.ToList())
+            {
+                string declaration = globVar.Type + " " + globVar.Name;
+                if (((globVar.Type == "int") ||
+                     (globVar.Type == "bool") ||
+                     (globVar.Type == "float")) &&
+                    (!string.IsNullOrEmpty(globVar.DefaultValue)))
+                {
+                    declaration += " = " + globVar.DefaultValue.ToLower();
+                }
+                globVarsSB.AppendLine(declaration + ";");
+                globVarsSB.AppendLine("export " + globVar.Name + ";");
+            }
+
+            globVarsSB.AppendLine("function game_start() {");
+            foreach (AGS.Types.GlobalVariable globVar in globVars)
+            {
+                if (globVar.Type == "String")
+                {
+                    string varValue = globVar.DefaultValue.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                    globVarsSB.AppendLine(globVar.Name + " = \"" + varValue + "\";");
+                }
+            }
+            globVarsSB.AppendLine("}");
+
+            return CompileScript("_GlobalVariables.asc", globVarsSB.ToString());
+        }
         public void AddStandardHeaders(AGS.Types.IAGSEditor editor)
         {
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
@@ -67,10 +100,10 @@ namespace SPAGS
         }
         public Script CompileScript(string name, string script)
         {
-            Script headerScript = new Script(name);
+            Script compiledScript = new Script(name);
             parser.Identifiers = new NameDictionary(GlobalNamespace);
-            parser.ReadScript(script, headerScript);
-            return headerScript;
+            parser.ReadScript(script, compiledScript);
+            return compiledScript;
         }
         public Script CompileDialogScript(AGS.Types.IAGSEditor editor)
         {
