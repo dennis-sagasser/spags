@@ -90,6 +90,11 @@ namespace SPAGS
             {
                 WriteScript(header, output, 0, true);
             }
+            Script globVarsScript = scripts.CompileGlobalVariablesScript(_editor);
+            if (globVarsScript != null)
+            {
+                WriteScript(globVarsScript, output, 0, false);
+            }
             foreach (AGS.Types.Script script in _editor.CurrentGame.Scripts)
             {
                 if (!script.IsHeader)
@@ -609,7 +614,7 @@ namespace SPAGS
                     case SPAGS.Util.NameHolderType.Variable:
                         Variable var = (Variable)named;
                         Indented(output, 0, "VARIABLE \"" + var.Name + "\" ("
-                            + (var.ParentScript == null ? "?" : var.ParentScript.Name) + ")");
+                            + (var.OwnerScript == null ? "?" : var.OwnerScript.Name) + ")");
                         break;
 
                     case SPAGS.Util.NameHolderType.BasicType:
