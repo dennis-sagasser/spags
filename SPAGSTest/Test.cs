@@ -88,25 +88,25 @@ namespace SPAGS
         {
             foreach (Script header in scripts.Headers)
             {
-                WriteScript(header, output, 0);
+                WriteScript(header, output, 0, true);
             }
             foreach (AGS.Types.Script script in _editor.CurrentGame.Scripts)
             {
                 if (!script.IsHeader)
                 {
-                    WriteScript(scripts.CompileScript(script.FileName, script.Text), output, 0);
+                    WriteScript(scripts.CompileScript(script.FileName, script.Text), output, 0, false);
                 }
             }
-            WriteScript(scripts.CompileDialogScript(_editor), output, 0);
+            WriteScript(scripts.CompileDialogScript(_editor), output, 0, false);
             foreach (IRoom unloadedRoom in _editor.CurrentGame.Rooms)
             {
-                WriteScript(scripts.CompileRoomScript(_editor, unloadedRoom.Number), output, 0);
+                WriteScript(scripts.CompileRoomScript(_editor, unloadedRoom.Number), output, 0, false);
             }
         }
 
-        void WriteScript(Script script, TextWriter output, int indent)
+        void WriteScript(Script script, TextWriter output, int indent, bool header)
         {
-            Indented(output, indent, "=== SCRIPT \"" + script.Name + "\" ===");
+            Indented(output, indent, "=== " + (header ? "HEADER" : "SCRIPT") + " \"" + script.Name + "\" ===");
             foreach (Variable var in script.DefinedVariables)
             {
                 Indented(output, indent, "DECLARE VARIABLE \"" + var.Name + "\":");
@@ -118,6 +118,7 @@ namespace SPAGS
             }
             foreach (Constant constant in script.DefinedConstants)
             {
+                if (constant.Undefined) continue;
                 if (constant is Constant.Expression)
                 {
                     Constant.Expression constantExpr = (Constant.Expression)constant;
