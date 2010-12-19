@@ -114,8 +114,8 @@ namespace SPAGS
                                  * 
                                  * (it does that for autocomplete purposes)
                                  */
-                                if (Identifiers.ContainsKey(constant.Name)) Identifiers.Remove(constant.Name);
-                                Identifiers.Add(constant);
+                                if (Namespace.ContainsKey(constant.Name)) Namespace.Remove(constant.Name);
+                                Namespace.Add(constant);
                             }
                             return;
                         }
@@ -141,8 +141,8 @@ namespace SPAGS
                              * 
                              * (it does that for autocomplete purposes)
                              */
-                            if (Identifiers.ContainsKey(fragment.Name)) Identifiers.Remove(fragment.Name);
-                            Identifiers.Add(fragment);
+                            if (Namespace.ContainsKey(fragment.Name)) Namespace.Remove(fragment.Name);
+                            Namespace.Add(fragment);
                         }
                         return;
                     case "ifver":
@@ -163,7 +163,7 @@ namespace SPAGS
                         AdvanceToken();
                         string ifdefName = AdvanceName();
                         if (token.Type != TokenType.EndOfInput) throw new Exception("invalid #ifdef");
-                        if (preprocLevel == preprocSuccess && Identifiers.ContainsKey(ifdefName))
+                        if (preprocLevel == preprocSuccess && Namespace.ContainsKey(ifdefName))
                         {
                             preprocSuccess++;
                         }
@@ -173,7 +173,7 @@ namespace SPAGS
                         AdvanceToken();
                         INameHolder defined;
                         string undefMe = AdvanceName();
-                        if (!Identifiers.TryGetValue(undefMe, out defined) || !(defined is Constant))
+                        if (!Namespace.TryGetValue(undefMe, out defined) || !(defined is Constant))
                         {
                             throw new Exception("attempt to #undef an undefined value: " + undefMe);
                         }
@@ -181,7 +181,7 @@ namespace SPAGS
 
                         Constant toUndefine = (Constant)defined;
                         toUndefine.Undefined = true;
-                        Identifiers.Remove(toUndefine);
+                        Namespace.Remove(toUndefine);
                         return;
                     case "error":
                         int startMessage = pos;
@@ -195,7 +195,7 @@ namespace SPAGS
                         AdvanceToken();
                         string ifndefName = AdvanceName();
                         if (token.Type != TokenType.EndOfInput) throw new Exception("invalid #ifndef");
-                        if (preprocLevel == preprocSuccess && !Identifiers.ContainsKey(ifndefName))
+                        if (preprocLevel == preprocSuccess && !Namespace.ContainsKey(ifndefName))
                         {
                             preprocSuccess++;
                         }

@@ -20,7 +20,7 @@ namespace SPAGS
         public Script ReadScript(string scriptText, Script targetScript)
         {
             script = targetScript;
-            script.Identifiers = Identifiers;
+            script.Namespace = Namespace;
             InitialiseTokenStream(scriptText);
 
             while (token.Type != TokenType.EndOfInput)
@@ -66,7 +66,7 @@ namespace SPAGS
                         else
                         {
                             newStruct = new ValueType.Struct(structName);
-                            Identifiers.Add(newStruct);
+                            Namespace.Add(newStruct);
                         }
                         newStruct.OwnerScript = script;
                         script.DefinedStructs.Add(newStruct);
@@ -169,10 +169,10 @@ namespace SPAGS
 
                                 newStruct.Members.Add(new StructMember.Attribute(attrName, attrType, mod_static, mod_array, getter, setter));
 
-                                Identifiers.Add(getter);
+                                Namespace.Add(getter);
                                 if (!mod_readonly)
                                 {
-                                    Identifiers.Add(setter);
+                                    Namespace.Add(setter);
                                 }
 
                                 continue;
@@ -187,7 +187,7 @@ namespace SPAGS
                                 AdvanceToken(TokenType.Semicolon);
                                 if (!mod_static) methodParams.Insert(0, new ParameterDef("this", newStruct, null));
                                 Function methodFunction = new Function(structName + "::" + name, valueType, methodParams);
-                                Identifiers.Add(methodFunction);
+                                Namespace.Add(methodFunction);
                                 StructMember.Method method = new StructMember.Method(name, methodFunction);
                                 method.IsStatic = mod_static;
                                 newStruct.Members.Add(method);
@@ -231,7 +231,7 @@ namespace SPAGS
                             ValueType.Enum enumType = new ValueType.Enum(AdvanceUnusedName());
                             enumType.OwnerScript = script;
                             script.DefinedEnums.Add(enumType);
-                            Identifiers.Add(enumType);
+                            Namespace.Add(enumType);
                             AdvanceToken(TokenType.LeftCurlyBrace);
                             EnumValue previous = null;
                             while (token.Type != TokenType.RightCurlyBrace)
@@ -240,7 +240,7 @@ namespace SPAGS
                                 Expression explicitValue = AdvancePossibleAssignment();
                                 EnumValue newValue = new EnumValue(enumType, enumEntry, explicitValue, previous);
                                 enumType.Entries.Add(newValue);
-                                Identifiers.Add(newValue);
+                                Namespace.Add(newValue);
                                 previous = newValue;
                                 if (token.Type == TokenType.Comma)
                                 {
@@ -386,7 +386,7 @@ namespace SPAGS
                                             script.DefinedVariables.Add(newVar);
                                         }
                                         newVar.ReadOnly = mod_readonly;
-                                        Identifiers.Add(newVar);
+                                        Namespace.Add(newVar);
                                     }
 
                                     if (token.Type == TokenType.Comma)
@@ -410,7 +410,7 @@ namespace SPAGS
                                 AdvanceToken(/* TokenType.DoubleColon */);
                                 string memberName = AdvanceName();
                                 ValueType.Struct implementingType;
-                                if (!Identifiers.TryGetValue2<ValueType.Struct>(name, out implementingType))
+                                if (!Namespace.TryGetValue2<ValueType.Struct>(name, out implementingType))
                                 {
                                     throw new Exception("struct not found: " + name);
                                 }
@@ -462,7 +462,7 @@ namespace SPAGS
                             {
                                 if (mod_array) valueType = new ValueType.Array(valueType, null);
                                 function = new Function(name, valueType, parameters);
-                                Identifiers.Add(function);
+                                Namespace.Add(function);
                             }
 
                             function.NoLoopCheck = mod_noloopcheck;
