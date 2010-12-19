@@ -6,16 +6,14 @@ namespace SPAGS
 {
     public class ScriptCollection
     {
-        public ScriptCollection(AGS.Types.IAGSEditor editor)
-        {
-            EngineVersion = new System.Version(editor.Version);
-            RightAssociativity = !editor.CurrentGame.Settings.LeftToRightPrecedence;
-            DebugMode = editor.CurrentGame.Settings.DebugMode;
-            StrictObjectOrientedMode = editor.CurrentGame.Settings.EnforceObjectBasedScript;
-            StrictStringMode = editor.CurrentGame.Settings.EnforceNewStrings;
-            StrictAudioMode = editor.CurrentGame.Settings.EnforceNewAudio;
+        private ScriptParser parser;
+        public NameDictionary GlobalNamespace = new NameDictionary();
+        public List<Script> Headers = new List<Script>();
 
-            parser = new ScriptParser(EngineVersion);
+        public ScriptCollection(string agsVersion)
+        {
+            parser = new ScriptParser(new System.Version(agsVersion));
+
             foreach (Token.Keyword keyword in Token.YieldKeywords())
             {
                 GlobalNamespace.Add(keyword);
@@ -24,57 +22,60 @@ namespace SPAGS
             {
                 GlobalNamespace.Add(vtype);
             }
-            if (DebugMode)
+        }
+        public bool LeftToRightPrecedence
+        {
+            get
             {
-                GlobalNamespace.Add(new Constant.Expression("DEBUG", new Expression.IntegerLiteral(1)));
+                return !parser.OverrideLeftToRight;
             }
-            if (StrictObjectOrientedMode)
+            set
             {
-                GlobalNamespace.Add(new Constant.Expression("STRICT", new Expression.IntegerLiteral(1)));
+                parser.OverrideLeftToRight = !value;
             }
-            if (StrictStringMode)
-            {
-                GlobalNamespace.Add(new Constant.Expression("STRICT_STRINGS", new Expression.IntegerLiteral(1)));
-            }
-            if (StrictAudioMode)
-            {
-                GlobalNamespace.Add(new Constant.Expression("STRICT_AUDIO", new Expression.IntegerLiteral(1)));
-            }
-            if (RightAssociativity)
-            {
-                parser.OverrideLeftToRight = true;
-            }
-            else
-            {
-                GlobalNamespace.Add(new Constant.Expression("LRPRECEDENCE", new Expression.IntegerLiteral(1)));
-            }
-            if (EngineVersion >= new System.Version("2.71"))
-            {
-                GlobalNamespace.Add(new Constant.Expression("AGS_NEW_STRINGS", new Expression.IntegerLiteral(1)));
-                GlobalNamespace.Add(new Constant.Expression("AGS_SUPPORTS_IFVER", new Expression.IntegerLiteral(1)));
-            }
+        }
+        public void SetConstant(string name)
+        {
+            GlobalNamespace.Add(new Constant.Expression(name, new Expression.IntegerLiteral(1)));
+        }
+        public void SetStandardConstants(AGS.Types.Settings settings)
+        {
+            SetConstant("AGS_NEW_STRINGS");
+            SetConstant("AGS_SUPPORTS_IFVER");
 
+            LeftToRightPrecedence = settings.LeftToRightPrecedence;
+            if (LeftToRightPrecedence) SetConstant("LRPRECEDENCE");
+            if (settings.DebugMode) SetConstant("DEBUG");
+            if (settings.EnforceObjectBasedScript) SetConstant("STRICT");
+            if (settings.EnforceNewStrings) SetConstant("STRICT_STRINGS");
+            if (settings.EnforceNewAudio) SetConstant("STRICT_AUDIO");
+        }
+        public Script AddHeader(string name, string header)
+        {
+            Script headerScript = new Script(name);
+            parser.Identifiers = GlobalNamespace;
+            parser.ReadScript(header, headerScript);
+            Headers.Add(headerScript);
+            return headerScript;
+        }
+        public void AddStandardHeaders(AGS.Types.IAGSEditor editor)
+        {
             foreach (AGS.Types.Script agsScript in editor.GetAllScriptHeaders())
             {
-                AddGlobalScript(agsScript.FileName, agsScript.Text, "");
+                AddHeader(agsScript.FileName, agsScript.Text);
             }
-
-            foreach (AGS.Types.Script agsScript in editor.CurrentGame.Scripts)
-            {
-                if (agsScript.IsHeader) continue;
-                AddGlobalScript(agsScript.FileName, "", agsScript.Text);
-            }
-
-            foreach (AGS.Types.IRoom room in editor.CurrentGame.Rooms)
-            {
-                if (!editor.RoomController.LoadRoom(room))
-                {
-                    throw new EditorUsageException("Prevented from loading room " + room.Number);
-                }
-                AddRoomScript(room, (AGS.Types.Room)editor.RoomController.CurrentRoom);
-            }
-
-            StringBuilder dialogScriptSB = new StringBuilder(@"#define DIALOG_NONE      0
+        }
+        public Script CompileScript(string name, string script)
+        {
+            Script headerScript = new Script(name);
+            parser.Identifiers = new NameDictionary(GlobalNamespace);
+            parser.ReadScript(script, headerScript);
+            return headerScript;
+        }
+        public Script CompileDialogScript(AGS.Types.IAGSEditor editor)
+        {
+            StringBuilder dialogScriptSB = new StringBuilder(@"
+#define DIALOG_NONE      0
 #define DIALOG_RUNNING   1
 #define DIALOG_STOP      2
 #define DIALOG_NEWROOM   100
@@ -104,7 +105,8 @@ function _run_dialog_request (int parmtr) {
   }
   game.stop_dialog_at_end = DIALOG_NONE;
   return -1;
-}");
+}
+");
             foreach (AGS.Types.Dialog dialog in editor.CurrentGame.Dialogs)
             {
                 if (string.IsNullOrEmpty(dialog.CachedConvertedScript))
@@ -114,97 +116,28 @@ function _run_dialog_request (int parmtr) {
                 dialogScriptSB.Append(dialog.CachedConvertedScript);
             }
 
-            AddGlobalScript("__DialogScripts.asc", "", dialogScriptSB.ToString());
+            return CompileScript("__DialogScripts.asc", dialogScriptSB.ToString());
         }
-
-
-        public IEnumerable<Script> YieldScripts()
+        public Script CompileRoomScript(AGS.Types.IAGSEditor editor, int roomNumber)
         {
-            foreach (Script script in MainHeaders) yield return script;
-            foreach (Script script in GlobalScripts) yield return script;
-            foreach (Script script in DialogScripts) yield return script;
-            foreach (Script script in RoomScripts.Values) yield return script;
-        }
-
-        public void AddDefine(string name)
-        {
-            GlobalNamespace.Add(new Constant.TokenSequence(name, new Token[] { }));
-        }
-
-        public Script MainScript = new Script("MainScript");
-        public List<Script> GlobalScripts = new List<Script>();
-
-        public NameDictionary GlobalNamespace = new NameDictionary();
-
-        private ScriptParser parser;
-
-        public System.Version EngineVersion;
-
-        public bool DebugMode;
-        public bool RightAssociativity;
-        public bool StrictObjectOrientedMode;
-        public bool StrictAudioMode;
-        public bool StrictStringMode;
-
-        public List<Script> MainHeaders = new List<Script>();
-
-        public void AddExtraHeader(string header)
-        {
-            if (header == null) throw new System.ArgumentNullException("header");
-            parser.Identifiers = GlobalNamespace;
-            MainHeaders.Add(parser.ReadScript(header, MainScript));
-        }
-
-        public void AddGlobalScript(string moduleName, string header, string script)
-        {
-            if (header == null) throw new System.ArgumentNullException("header");
-            if (script == null) throw new System.ArgumentNullException("script");
-            Script moduleScript = new Script(moduleName);
-            GlobalScripts.Add(moduleScript);
-            parser.Identifiers = GlobalNamespace;
-            parser.ReadScript(header, moduleScript);
-            parser.Identifiers = new NameDictionary(GlobalNamespace);
-            parser.ReadScript(script, moduleScript);
-        }
-
-        public List<Script> DialogScripts = new List<Script>();
-
-        public void AddDialogScript(string scriptText)
-        {
-            Script newDialogScript = new Script("Dialog" + DialogScripts.Count + "Script");
-            parser.Identifiers = new NameDictionary(GlobalNamespace);
-            parser.Identifiers.Add(new Variable("__dlgscript_tempval", ValueType.Int, null));
-            parser.Identifiers.Add(new Variable("_run_dialog_request", ValueType.Int, null));
-            parser.ReadScript(scriptText, newDialogScript);
-            DialogScripts.Add(newDialogScript);
-        }
-
-        public Dictionary<int, Script> RoomScripts = new Dictionary<int, Script>();
-
-        public void MarkBlockingFunctions()
-        {
-            for (bool anyChanges = false; anyChanges == true; anyChanges = false)
+            AGS.Types.IRoom unloadedRoom = null;
+            foreach (AGS.Types.IRoom r in editor.CurrentGame.Rooms)
             {
-                foreach (Script script in this.YieldScripts())
+                if (r.Number == roomNumber)
                 {
-                    foreach (Function func in script.DefinedFunctions)
-                    {
-                        if (func.MarkedAsBlocking) continue;
-                        foreach (Function calledFunc in func.Body.YieldFunctions())
-                        {
-                            if (calledFunc.MarkedAsBlocking)
-                            {
-                                func.MarkedAsBlocking = true;
-                                anyChanges = true;
-                            }
-                        }
-                    }
+                    unloadedRoom = r;
+                    break;
                 }
             }
-        }
-
-        public void AddRoomScript(AGS.Types.IRoom unloadedRoom, AGS.Types.Room room)
-        {
+            if (unloadedRoom == null)
+            {
+                throw new SPAGS.Util.EditorUsageException("Room not found: " + roomNumber);
+            }
+            if (!editor.RoomController.LoadRoom(unloadedRoom))
+            {
+                throw new SPAGS.Util.EditorUsageException("Unable to load room: " + roomNumber);
+            }
+            AGS.Types.Room room = (AGS.Types.Room)editor.RoomController.CurrentRoom;
             NameDictionary roomVariables = new NameDictionary();
             ValueType.Struct hotspotType, objectType;
             if (!GlobalNamespace.TryGetValue2<ValueType.Struct>("Hotspot", out hotspotType))
@@ -223,16 +156,15 @@ function _run_dialog_request (int parmtr) {
             {
                 roomVariables.Add(new Variable(obj.Name, objectType, null));
             }
-            AddRoomScript(room.Number, unloadedRoom.Script.Text, roomVariables);
-        }
-        public void AddRoomScript(int roomNumber, string scriptText, NameDictionary roomVariables)
-        {
-            if (scriptText == null) throw new System.ArgumentNullException("script");
+            string scriptText = unloadedRoom.Script.Text;
             parser.Identifiers = new NameDictionary(GlobalNamespace);
             foreach (INameHolder nameHolder in roomVariables.Values) parser.Identifiers.Add(nameHolder);
-            RoomScripts[roomNumber] = parser.ReadScript(scriptText, new Script("Room" + roomNumber + "Script"));
-
-            foreach (ScriptVariable scriptVar in roomVariables.EachOf<ScriptVariable>()) scriptVar.OwnerScript = RoomScripts[roomNumber];
+            Script newScript = parser.ReadScript(scriptText, new Script(unloadedRoom.ScriptFileName));
+            foreach (ScriptVariable scriptVar in roomVariables.EachOf<ScriptVariable>())
+            {
+                scriptVar.OwnerScript = newScript;
+            }
+            return newScript;
         }
     }
 }
