@@ -190,6 +190,10 @@ namespace SPAGS
                         case StructMemberType.Method:
                             StructMember.Method method = (StructMember.Method)member;
                             name = "METHOD";
+                            if (method.IsExtender)
+                            {
+                                name = "EXTENDER " + name;
+                            }
                             if (method.IsStatic)
                             {
                                 name = "STATIC " + name;
@@ -201,7 +205,14 @@ namespace SPAGS
             }
             foreach (Function func in script.DefinedFunctions)
             {
-                Indented(output, indent, "DEFINE FUNCTION \"" + func.Name + "\":");
+                if (func.Name.Contains("::"))
+                {
+                    Indented(output, indent, "DEFINE METHOD \"" + func.Name + "\":");
+                }
+                else
+                {
+                    Indented(output, indent, "DEFINE FUNCTION \"" + func.Name + "\":");
+                }
                 Indented(output, indent + 1, "RETURN TYPE:");
                 WriteValueType(func.Signature.ReturnType, output, indent + 2);
                 foreach (ParameterDef param in func.Signature.Parameters)
