@@ -330,7 +330,7 @@ namespace SPAGS
                             }
 
                             bool mod_noloopcheck = (token.Type == TokenType.NoLoopCheck);
-                            if (mod_noloopcheck) AdvanceToken();
+                            if (mod_noloopcheck) AdvanceToken(/* TokenType.NoLoopCheck */);
 
                             INameHolder existingHolder;
                             string name = AdvanceName(out existingHolder);
