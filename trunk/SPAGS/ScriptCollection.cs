@@ -53,7 +53,7 @@ namespace SPAGS
         public Script AddHeader(string name, string header)
         {
             Script headerScript = new Script(name);
-            parser.Identifiers = GlobalNamespace;
+            parser.Namespace = GlobalNamespace;
             parser.ReadScript(header, headerScript);
             Headers.Add(headerScript);
             return headerScript;
@@ -101,7 +101,7 @@ namespace SPAGS
         public Script CompileScript(string name, string script)
         {
             Script compiledScript = new Script(name);
-            parser.Identifiers = new NameDictionary(GlobalNamespace);
+            parser.Namespace = new NameDictionary(GlobalNamespace);
             parser.ReadScript(script, compiledScript);
             return compiledScript;
         }
@@ -190,8 +190,8 @@ function _run_dialog_request (int parmtr) {
                 roomVariables.Add(new Variable(obj.Name, objectType, null));
             }
             string scriptText = unloadedRoom.Script.Text;
-            parser.Identifiers = new NameDictionary(GlobalNamespace);
-            foreach (INameHolder nameHolder in roomVariables.Values) parser.Identifiers.Add(nameHolder);
+            parser.Namespace = new NameDictionary(GlobalNamespace);
+            foreach (INameHolder nameHolder in roomVariables.Values) parser.Namespace.Add(nameHolder);
             Script newScript = parser.ReadScript(scriptText, new Script(unloadedRoom.ScriptFileName));
             foreach (ScriptVariable scriptVar in roomVariables.EachOf<ScriptVariable>())
             {

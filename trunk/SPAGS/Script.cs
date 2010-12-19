@@ -14,7 +14,7 @@ namespace SPAGS
         public string Name;
         public bool IsHeader;
         public object UserData;
-        public NameDictionary Identifiers;
+        public NameDictionary Namespace;
         public List<Function> DefinedFunctions = new List<Function>();
         public List<ScriptVariable> DefinedVariables = new List<ScriptVariable>();
         public List<ValueType.Enum> DefinedEnums = new List<ValueType.Enum>();

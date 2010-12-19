@@ -585,11 +585,11 @@ namespace SPAGS
             return token;
         }
 
-        public NameDictionary Identifiers = new NameDictionary();
+        public NameDictionary Namespace = new NameDictionary();
 
         bool LookUpName(string name, out INameHolder nameHolder)
         {
-            if (Identifiers.TryGetValue(name, out nameHolder)) return true;
+            if (Namespace.TryGetValue(name, out nameHolder)) return true;
             if (CurrentBlock != null)
             {
                 for (int i = 0; i < FunctionContext.Count; i++)
