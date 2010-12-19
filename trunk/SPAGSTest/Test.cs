@@ -50,7 +50,9 @@ namespace SPAGS
                     try
                     {
                         string path = Path.Combine(_editor.CurrentGame.DirectoryPath, DUMP_FILENAME);
-                        ScriptCollection scripts = new ScriptCollection(_editor);
+                        ScriptCollection scripts = new ScriptCollection(_editor.Version);
+                        scripts.SetStandardConstants(_editor.CurrentGame.Settings);
+                        scripts.AddStandardHeaders(_editor);
                         using (TextWriter output = new StreamWriter(path))
                         {
                             WriteAllScripts(scripts, output);
@@ -84,9 +86,21 @@ namespace SPAGS
 
         void WriteAllScripts(ScriptCollection scripts, TextWriter output)
         {
-            foreach (Script script in scripts.YieldScripts())
+            foreach (Script header in scripts.Headers)
             {
-                WriteScript(script, output, 0);
+                WriteScript(header, output, 0);
+            }
+            foreach (AGS.Types.Script script in _editor.CurrentGame.Scripts)
+            {
+                if (!script.IsHeader)
+                {
+                    WriteScript(scripts.CompileScript(script.FileName, script.Text), output, 0);
+                }
+            }
+            WriteScript(scripts.CompileDialogScript(_editor), output, 0);
+            foreach (IRoom unloadedRoom in _editor.CurrentGame.Rooms)
+            {
+                WriteScript(scripts.CompileRoomScript(_editor, unloadedRoom.Number), output, 0);
             }
         }
 
