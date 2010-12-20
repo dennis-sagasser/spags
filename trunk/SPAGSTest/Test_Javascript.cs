@@ -567,14 +567,7 @@ namespace SPAGS
                     break;
                 case ExpressionType.EnumValue:
                     Expression.EnumValue enumValue = (Expression.EnumValue)expr;
-                    if (enumValue.TheValue.Name == "true" || enumValue.TheValue.Name == "false")
-                    {
-                        output.Write(enumValue.TheValue.Name);
-                    }
-                    else
-                    {
-                        output.Write(enumValue.TheValue.Value + " /* "+ enumValue.TheValue.Name + " */");
-                    }
+                    output.Write(enumValue.TheValue.Value + " /* "+ enumValue.TheValue.Name + " */");
                     break;
                 case ExpressionType.Field:
                     Expression.Field field = (Expression.Field)expr;
