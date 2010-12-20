@@ -34,6 +34,7 @@ namespace SPAGS
         }
 
         Script currentScript;
+        Function currentFunction;
 
         void WriteJavascript(Script script, TextWriter output, int indent, bool header)
         {
@@ -123,6 +124,7 @@ namespace SPAGS
             */
             foreach (Function func in script.DefinedFunctions)
             {
+                currentFunction = func;
                 output.Write("  \"" + func.Name.Replace("::","$") + "\": function(");
                 for (int i = 0; i < func.Signature.Parameters.Count; i++)
                 {
@@ -134,6 +136,13 @@ namespace SPAGS
                 {
                     Indent(output, indent + 2);
                     WriteStatementJS(stmt, output, indent + 2);
+                }
+                if (func.Signature.ReturnType.Category != ValueType.ValueTypeCategory.Void
+                    && !func.Body.Returns())
+                {
+                    output.Write("    return ");
+                    WriteExpressionJS(func.Signature.ReturnType.CreateDefaultValueExpression(), output, indent);
+                    output.WriteLine(";");
                 }
                 output.WriteLine("  },");
             }
@@ -373,7 +382,17 @@ namespace SPAGS
                     Statement.Return ret = (Statement.Return)stmt;
                     if (ret.Value == null)
                     {
-                        output.WriteLine("return;");
+                        ValueType returnType = currentFunction.Signature.ReturnType;
+                        if (returnType.Category != ValueType.ValueTypeCategory.Void)
+                        {
+                            output.Write("return ");
+                            WriteExpressionJS(returnType.CreateDefaultValueExpression(), output, indent);
+                            output.WriteLine(";");
+                        }
+                        else
+                        {
+                            output.WriteLine("return;");
+                        }
                     }
                     else
                     {
