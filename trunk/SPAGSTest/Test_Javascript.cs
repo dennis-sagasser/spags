@@ -40,6 +40,7 @@ namespace SPAGS
         {
             currentScript = script;
             Indented(output, indent, "scripts[\"" + script.Name + "\"] = {");
+            /*
             foreach (Constant constant in script.DefinedConstants)
             {
                 if (constant.Undefined) continue;
@@ -59,6 +60,7 @@ namespace SPAGS
                     Indented(output, indent + 1, "\"" + enumValue.Name + "\": " + enumValue.Value + ",");
                 }
             }
+             */
             foreach (Variable var in script.DefinedVariables)
             {
                 output.Write("  \"" + var.Name + "\": ");
@@ -528,12 +530,40 @@ namespace SPAGS
                     break;
                 case ExpressionType.CharLiteral:
                     Expression.CharLiteral charLiteral = (Expression.CharLiteral)expr;
-                    output.Write("'" + charLiteral.Value + "'.charCodeAt(0)");
+                    output.Write((int)charLiteral.Value);
+                    switch (charLiteral.Value)
+                    {
+                        case '\r':
+                            output.Write(" /* '\\r' */");
+                            break;
+                        case '\n':
+                            output.Write(" /* '\\n' */");
+                            break;
+                        case '\t':
+                            output.Write(" /* '\\t' */");
+                            break;
+                        case '\'':
+                            output.Write(" /* '\\'' */");
+                            break;
+                        case '\\':
+                            output.Write(" /* '\\\\' */");
+                            break;
+                        default:
+                            if ((int)charLiteral.Value < 32 || (int)charLiteral.Value >= 127)
+                            {
+                                output.Write(" /* '\\x{0:X2}' */", (int)charLiteral.Value);
+                            }
+                            else
+                            {
+                                output.Write(" /* '" + charLiteral.Value + "' */");
+                            }
+                            break;
+                    }
                     break;
                 case ExpressionType.Constant:
                     Expression.Constant constant = (Expression.Constant)expr;
-                    WriteScriptOwnerJS(constant.TheConstant.OwnerScript, output);
-                    output.Write("." + constant.TheConstant.Name);
+                    WriteExpressionJS(constant.TheConstant.TheExpression, output, indent);
+                    output.Write(" /* " + constant.TheConstant.Name + " */");
                     break;
                 case ExpressionType.EnumValue:
                     Expression.EnumValue enumValue = (Expression.EnumValue)expr;
@@ -543,8 +573,7 @@ namespace SPAGS
                     }
                     else
                     {
-                        WriteScriptOwnerJS(enumValue.TheValue.OwnerType.OwnerScript, output);
-                        output.Write("." + enumValue.TheValue.Name);
+                        output.Write(enumValue.TheValue.Value + " /* "+ enumValue.TheValue.Name + " */");
                     }
                     break;
                 case ExpressionType.Field:
