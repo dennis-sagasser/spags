@@ -278,15 +278,95 @@ namespace SPAGS
                     break;
                 case StatementType.If:
                     Statement.If conditional = (Statement.If)stmt;
-                    output.Write("if (");
-                    WriteExpressionJS(conditional.IfThisIsTrue, output, indent);
-                    output.Write(") ");
-                    WriteStatementJS(conditional.ThenDoThis, output, indent);
-                    if (conditional.ElseDoThis != null)
+                    Expression switchTest;
+                    List<Expression> switchValues;
+                    List<Statement> switchCases;
+                    Statement switchDefault;
+                    if (TryGetSwitchBlock(conditional, out switchTest, out switchValues, out switchCases, out switchDefault))
                     {
+                        output.Write("switch (");
+                        WriteExpressionJS(switchTest, output, indent);
+                        output.WriteLine(") {");
+                        for (int i = 0; i < switchCases.Count; i++)
+                        {
+                            Indent(output, indent + 1);
+                            output.Write("case ");
+                            WriteExpressionJS(switchValues[i], output, indent + 1);
+                            output.Write(":");
+                            Statement.Block caseBlock = switchCases[i] as Statement.Block;
+                            if (caseBlock == null)
+                            {
+                                output.WriteLine();
+                                Indent(output, indent + 2);
+                                WriteStatementJS(switchCases[i], output, indent + 2);
+                            }
+                            else if (caseBlock.Scope.Count != 0)
+                            {
+                                output.Write(" ");
+                                WriteStatementJS(switchCases[i], output, indent + 2);
+                            }
+                            else
+                            {
+                                output.WriteLine();
+                                foreach (Statement caseStmt in caseBlock.ChildStatements)
+                                {
+                                    Indent(output, indent + 2);
+                                    WriteStatementJS(caseStmt, output, indent + 2);
+                                }
+                            }
+                            if (!switchCases[i].Returns())
+                            {
+                                Indent(output, indent + 2);
+                                output.WriteLine("break;");
+                            }
+                        }
+                        if (switchDefault != null)
+                        {
+                            Indent(output, indent + 1);
+                            output.Write("default: ");
+
+                            Statement.Block defaultBlock = switchDefault as Statement.Block;
+                            if (defaultBlock == null)
+                            {
+                                output.WriteLine();
+                                Indent(output, indent + 2);
+                                WriteStatementJS(switchDefault, output, indent + 2);
+                            }
+                            else if (defaultBlock.Scope.Count != 0)
+                            {
+                                output.Write(" ");
+                                WriteStatementJS(switchDefault, output, indent + 2);
+                            }
+                            else
+                            {
+                                output.WriteLine();
+                                foreach (Statement caseStmt in defaultBlock.ChildStatements)
+                                {
+                                    Indent(output, indent + 2);
+                                    WriteStatementJS(caseStmt, output, indent + 2);
+                                }
+                            }
+                            if (!switchDefault.Returns())
+                            {
+                                Indent(output, indent + 2);
+                                output.WriteLine("break;");
+                            }
+                        }
                         Indent(output, indent);
-                        output.Write("else ");
-                        WriteStatementJS(conditional.ElseDoThis, output, indent);
+                        output.WriteLine("}");
+                    }
+                    else
+                    {
+                        output.Write("if (");
+                        WriteExpressionJS(conditional.IfThisIsTrue, output, indent);
+                        output.Write(") ");
+                        WriteStatementJS(conditional.ThenDoThis, output, indent);
+                        if (conditional.ElseDoThis != null)
+                        {
+                            Indent(output, indent);
+                            output.Write("else ");
+                            WriteStatementJS(conditional.ElseDoThis, output, indent);
+                        }
                     }
                     break;
                 case StatementType.Return:
@@ -604,6 +684,48 @@ namespace SPAGS
                     break;
             }
             WriteExpressionJS(op.Operand, output, indent + 1);
+        }
+        bool StaticValue(Expression expr)
+        {
+            return (expr.Type == ExpressionType.Variable);
+        }
+        bool TryGetSwitchBlock(Statement.If ifBlock,
+            out Expression testExpr, out List<Expression> values,
+            out List<Statement> cases, out Statement defaultCase)
+        {
+            testExpr = null;
+            values = null;
+            cases = null;
+            defaultCase = null;
+
+            Expression.BinaryOperator binop = ifBlock.IfThisIsTrue as Expression.BinaryOperator;
+            if (!(ifBlock.ElseDoThis is Statement.If) || binop == null || binop.Token.Type != TokenType.IsEqualTo
+                || !StaticValue(binop.Left) || !binop.Right.IsConstant()) return false;
+
+            testExpr = binop.Left;
+            values = new List<Expression>();
+            values.Add(binop.Right);
+            cases = new List<Statement>();
+            cases.Add(ifBlock.ThenDoThis);
+
+            for (Statement otherCase = ifBlock.ElseDoThis; otherCase != null; otherCase = ifBlock.ElseDoThis)
+            {
+                ifBlock = otherCase as Statement.If;
+                if (ifBlock == null)
+                {
+                    defaultCase = otherCase;
+                    break;
+                }
+                binop = ifBlock.IfThisIsTrue as Expression.BinaryOperator;
+                if (binop == null || !binop.Left.Equals(testExpr) || !binop.Right.IsConstant())
+                {
+                    return false;
+                }
+                values.Add(binop.Right);
+                cases.Add(ifBlock.ThenDoThis);
+            }
+
+            return true;
         }
     }
 }
