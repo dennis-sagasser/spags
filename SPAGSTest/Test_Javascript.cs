@@ -55,7 +55,7 @@ namespace SPAGS
                 if (enumType.Name == "bool") continue;
                 foreach (EnumValue enumValue in enumType.Entries)
                 {
-                    Indented(output, indent + 1, "\"" + enumValue.Name + "\": " + enumValue.Value);
+                    Indented(output, indent + 1, "\"" + enumValue.Name + "\": " + enumValue.Value + ",");
                 }
             }
             foreach (Variable var in script.DefinedVariables)
