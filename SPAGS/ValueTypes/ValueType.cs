@@ -29,6 +29,18 @@ namespace SPAGS
             public Named(string name, ValueTypeCategory cat) : base(name, cat) { }
             public virtual NameHolderType NameHolderType { get { return NameHolderType.BasicType; } }
         }
+        public Expression CreateDefaultValueExpression()
+        {
+            switch (Category)
+            {
+                case ValueTypeCategory.Int:
+                    return new Expression.IntegerLiteral(0);
+                case ValueTypeCategory.Float:
+                    return new Expression.FloatLiteral(0);
+                default:
+                    return Expression.Null;
+            }
+        }
         public static readonly Named Int = new Named("int", ValueTypeCategory.Int);
         public static readonly Named Long = new Named("long", ValueTypeCategory.Int);
         public static readonly Named Float = new Named("float", ValueTypeCategory.Float);
