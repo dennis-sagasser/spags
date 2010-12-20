@@ -512,7 +512,7 @@ namespace SPAGS
                 output.Write("(");
             }
             Expression.BinaryOperator leftBinOp = op.Left as Expression.BinaryOperator;
-            if (leftBinOp != null)
+            if (leftBinOp != null && leftBinOp.Token.Type != op.Token.Type)
             {
                 WriteBinaryOperatorJS(leftBinOp, output, indent, true);
             }
