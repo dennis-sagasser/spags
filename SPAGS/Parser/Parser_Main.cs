@@ -432,7 +432,7 @@ namespace SPAGS
                             {
                                 AdvanceToken();
                                 thisType = AdvanceValueType();
-                                if (thisType.Category != ValueType.ValueTypeCategory.Struct)
+                                if (thisType.Category != ValueTypeCategory.Struct)
                                 {
                                     throw new Exception("cannot add extender method to " + thisType);
                                 }

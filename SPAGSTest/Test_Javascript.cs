@@ -137,7 +137,7 @@ namespace SPAGS
                     Indent(output, indent + 2);
                     WriteStatementJS(stmt, output, indent + 2);
                 }
-                if (func.Signature.ReturnType.Category != ValueType.ValueTypeCategory.Void
+                if (func.Signature.ReturnType.Category != ValueTypeCategory.Void
                     && !func.Body.Returns())
                 {
                     output.Write("    return ");
@@ -383,7 +383,7 @@ namespace SPAGS
                     if (ret.Value == null)
                     {
                         ValueType returnType = currentFunction.Signature.ReturnType;
-                        if (returnType.Category != ValueType.ValueTypeCategory.Void)
+                        if (returnType.Category != ValueTypeCategory.Void)
                         {
                             output.Write("return ");
                             WriteExpressionJS(returnType.CreateDefaultValueExpression(), output, indent);
@@ -458,8 +458,8 @@ namespace SPAGS
                     Expression.AllocateArray allocArray = (Expression.AllocateArray)expr;
                     switch (allocArray.ElementType.Category)
                     {
-                        case ValueType.ValueTypeCategory.Float:
-                        case ValueType.ValueTypeCategory.Int:
+                        case ValueTypeCategory.Float:
+                        case ValueTypeCategory.Int:
                             output.Write("util.arrayZeroes(");
                             break;
                         default:
@@ -601,7 +601,7 @@ namespace SPAGS
 
         void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent, bool parens)
         {
-            if (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueType.ValueTypeCategory.Int)
+            if (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueTypeCategory.Int)
             {
                 output.Write("Math.floor(");
                 parens = true;

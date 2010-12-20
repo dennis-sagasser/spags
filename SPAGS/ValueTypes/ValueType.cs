@@ -5,12 +5,12 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
+    public enum ValueTypeCategory
+    {
+        Int, Float, StringValue, StringBuffer, Void, Struct, FunctionSignature, Array, Null
+    }
     public partial class ValueType
     {
-        public enum ValueTypeCategory
-        {
-            Int, Float, StringValue, StringBuffer, Void, Struct, FunctionSignature, Array, Null
-        }
         protected ValueType(string name, ValueTypeCategory category)
         {
             this.name = name;
