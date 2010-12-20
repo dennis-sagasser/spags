@@ -9,7 +9,7 @@ using AGS.Types;
 namespace SPAGS
 {
     [RequiredAGSVersion("3.2.0.0")]
-    public class TestPlugin : IEditorComponent, IAGSEditorPlugin
+    public partial class TestPlugin : IEditorComponent, IAGSEditorPlugin
     {
 
         /*** Plugin Management ***/
@@ -17,7 +17,9 @@ namespace SPAGS
         const string COMPONENT = "SPAGS_Test";
         const string MENU_SPAGS = "SPAGS_Menu";
         const string COMMAND_DUMP_SCRIPTS = "DumpScripts";
+        const string COMMAND_JAVASCRIPT = "Javascript";
         const string DUMP_FILENAME = "scripts_dump.txt";
+        const string JS_FILENAME = "scripts_dump.js";
 
         IAGSEditor _editor;
 
@@ -28,6 +30,7 @@ namespace SPAGS
             _editor.GUIController.AddMenu(this, MENU_SPAGS, "SPAGS", _editor.GUIController.FileMenuID);
             MenuCommands newCommands = new MenuCommands(MENU_SPAGS);
             newCommands.Commands.Add(new MenuCommand(COMMAND_DUMP_SCRIPTS, "Dump Scripts"));
+            newCommands.Commands.Add(new MenuCommand(COMMAND_JAVASCRIPT, "Dump Javascript (experimental!)"));
             editor.GUIController.AddMenuItems(this, newCommands);
 
             _editor.AddComponent(this);
@@ -65,6 +68,34 @@ namespace SPAGS
                         MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     break;
+
+                case COMMAND_JAVASCRIPT:
+                    foreach (Dialog dialog in _editor.CurrentGame.Dialogs)
+                    {
+                        if (String.IsNullOrEmpty(dialog.CachedConvertedScript))
+                        {
+                            MessageBox.Show("Please rebuild the game (e.g. by pressing F7) and try again.");
+                            return;
+                        }
+                    }
+
+                    try
+                    {
+                        string path = Path.Combine(_editor.CurrentGame.DirectoryPath, JS_FILENAME);
+                        ScriptCollection scripts = new ScriptCollection(_editor.Version);
+                        scripts.SetStandardConstants(_editor.CurrentGame.Settings);
+                        scripts.AddStandardHeaders(_editor);
+                        using (TextWriter output = new StreamWriter(path))
+                        {
+                            WriteJavascripts(scripts, output);
+                        }
+                        MessageBox.Show(JS_FILENAME + " created!", "Script dump", MessageBoxButtons.OK);
+                    }
+                    catch (SPAGS.Util.EditorUsageException ex)
+                    {
+                        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    break;
             }
         }
 
@@ -75,12 +106,17 @@ namespace SPAGS
 
         /*** Output ***/
 
-        static void Indented(TextWriter output, int indent, string line)
+        static void Indent(TextWriter output, int indent)
         {
             for (int i = 0; i < indent; i++)
             {
                 output.Write("  ");
             }
+        }
+
+        static void Indented(TextWriter output, int indent, string line)
+        {
+            Indent(output, indent);
             output.WriteLine(line);
         }
 
