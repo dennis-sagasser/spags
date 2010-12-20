@@ -67,6 +67,8 @@ namespace SPAGS
 
         public abstract ValueType GetValueType();
 
+        public abstract bool Equals(Expression ex);
+
         public class IntegerLiteral : Expression
         {
             public IntegerLiteral(int value)
@@ -91,6 +93,10 @@ namespace SPAGS
             {
                 value = Value;
                 return true;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is IntegerLiteral) && (((IntegerLiteral)ex).Value == this.Value);
             }
         }
 
@@ -119,6 +125,10 @@ namespace SPAGS
                 value = Value;
                 return true;
             }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is FloatLiteral) && (((FloatLiteral)ex).Value == this.Value);
+            }
         }
 
         public class Function : Expression
@@ -144,6 +154,10 @@ namespace SPAGS
             public override ValueType GetValueType()
             {
                 return TheFunction.Signature;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is Function) && (((Function)ex).TheFunction == this.TheFunction);
             }
         }
 
@@ -209,6 +223,17 @@ namespace SPAGS
                         throw new Exception("unrecognised callable: " + this);
                 }
             }
+            public override bool Equals(Expression ex)
+            {
+                Call call = ex as Call;
+                if (call == null || !call.CallingOn.Equals(this.CallingOn)
+                    || call.Parameters.Count != this.Parameters.Count) return false;
+                for (int i = 0; i < call.Parameters.Count; i++)
+                {
+                    if (!call.Parameters[i].Equals(this.Parameters[i])) return false;
+                }
+                return true;
+            }
         }
 
         public class ArrayIndex : Expression
@@ -266,6 +291,11 @@ namespace SPAGS
                         throw new Exception("unrecognised array: " + this);
                 }
             }
+            public override bool Equals(Expression ex)
+            {
+                ArrayIndex index = ex as ArrayIndex;
+                return (index != null) && (index.Index.Equals(this.Index)) && (index.Target.Equals(this.Target));
+            }
         }
 
         public class CharLiteral : Expression
@@ -300,6 +330,10 @@ namespace SPAGS
                 value = (int)Value;
                 return true;
             }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is CharLiteral) && (((CharLiteral)ex).Value == this.Value);
+            }
         }
 
         public class StructType : Expression
@@ -321,6 +355,10 @@ namespace SPAGS
             public override ValueType GetValueType()
             {
                 return TheStructType;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is StructType) && (((StructType)ex).TheStructType == this.TheStructType);
             }
         }
 
@@ -360,6 +398,10 @@ namespace SPAGS
             public override bool TryGetStringValue(out string value)
             {
                 return this.TheConstant.TheExpression.TryGetStringValue(out value);
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is Constant) && (((Constant)ex).TheConstant == this.TheConstant);
             }
         }
 
@@ -414,6 +456,10 @@ namespace SPAGS
                 if (TheAttribute.IsArray) throw new Exception(this + " must be accessed as an array");
                 return TheAttribute.Getter.Signature.ReturnType;
             }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is StructType) && (((StructType)ex).TheStructType == this.TheStructType);
+            }
         }
 
         public class Field : Expression
@@ -444,6 +490,11 @@ namespace SPAGS
             public override ValueType GetValueType()
             {
                 return TheField.Type;
+            }
+            public override bool Equals(Expression ex)
+            {
+                Field field = ex as Field;
+                return (field != null) && (field.TheField == this.TheField) && (field.Target == this.Target);
             }
         }
 
@@ -481,6 +532,11 @@ namespace SPAGS
             {
                 return TheMethod.Function.Signature;
             }
+            public override bool Equals(Expression ex)
+            {
+                Method method = ex as Method;
+                return (method != null) && (method.TheMethod == this.TheMethod) && (method.Target == this.Target);
+            }
         }
 
         public class Variable : Expression
@@ -503,6 +559,10 @@ namespace SPAGS
             public override ValueType GetValueType()
             {
                 return TheVariable.Type;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is Variable) && (((Variable)ex).TheVariable == this.TheVariable);
             }
         }
 
@@ -529,6 +589,10 @@ namespace SPAGS
             public override bool TryGetIntValue(out int value)
             {
                 return TheValue.TryGetIntValue(out value);
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is EnumValue) && (((EnumValue)ex).TheValue == this.TheValue);
             }
         }
 
@@ -557,6 +621,10 @@ namespace SPAGS
                 value = Value;
                 return true;
             }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is StringLiteral) && (((StringLiteral)ex).Value == this.Value);
+            }
         }
 
         public class NullType : Expression
@@ -576,6 +644,10 @@ namespace SPAGS
             public override ValueType GetValueType()
             {
                 return ValueType.Null;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex.Type == ExpressionType.Null);
             }
         }
 
@@ -672,6 +744,11 @@ namespace SPAGS
                 value = 0;
                 return false;
             }
+            public override bool Equals(Expression ex)
+            {
+                UnaryOperator unop = ex as UnaryOperator;
+                return (unop != null) && (unop.Token.Type == this.Token.Type) && unop.Operand.Equals(this.Operand);
+            }
         }
 
         public class BinaryOperator : Expression
@@ -738,6 +815,12 @@ namespace SPAGS
                 yield return Left;
                 yield return Right;
             }
+            public override bool Equals(Expression ex)
+            {
+                BinaryOperator binop = ex as BinaryOperator;
+                return (binop != null) && (binop.Token.Type == this.Token.Type)
+                    && binop.Left.Equals(this.Left) && binop.Right.Equals(this.Right);
+            }
         }
         public class AllocateArray : Expression
         {
@@ -766,6 +849,12 @@ namespace SPAGS
             public override IEnumerable<Expression> YieldSubExpressions()
             {
                 yield return Length;
+            }
+            public override bool Equals(Expression ex)
+            {
+                AllocateArray allocArray = ex as AllocateArray;
+                return (allocArray != null) && (allocArray.ElementType == this.ElementType)
+                    && allocArray.Length.Equals(this.Length);
             }
         }
     }
