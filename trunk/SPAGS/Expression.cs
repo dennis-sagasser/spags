@@ -268,7 +268,7 @@ namespace SPAGS
                 {
                     case ExpressionType.Variable:
                         ActualVariable v = ((Expression.Variable)Target).TheVariable;
-                        if (v.Type.Category != ValueType.ValueTypeCategory.Array)
+                        if (v.Type.Category != ValueTypeCategory.Array)
                         {
                             throw new Exception(v.Name + " is not an array");
                         }
@@ -282,7 +282,7 @@ namespace SPAGS
                         return attr.Getter.Signature.ReturnType;
                     case ExpressionType.Field:
                         ActualField field = ((Expression.Field)Target).TheField;
-                        if (field.Type.Category != ValueType.ValueTypeCategory.Array)
+                        if (field.Type.Category != ValueTypeCategory.Array)
                         {
                             throw new Exception(field.Name + " is not an array field");
                         }
@@ -782,8 +782,8 @@ namespace SPAGS
                     case TokenType.Multiply:
                     case TokenType.Divide:
                     case TokenType.Modulus:
-                        if (Left.GetValueType().Category == ValueType.ValueTypeCategory.Float
-                            || Right.GetValueType().Category == ValueType.ValueTypeCategory.Float)
+                        if (Left.GetValueType().Category == ValueTypeCategory.Float
+                            || Right.GetValueType().Category == ValueTypeCategory.Float)
                         {
                             return ValueType.Float;
                         }

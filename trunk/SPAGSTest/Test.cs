@@ -550,7 +550,7 @@ namespace SPAGS
         {
             switch (valueType.Category)
             {
-                case ValueType.ValueTypeCategory.Array:
+                case ValueTypeCategory.Array:
                     ValueType.Array arrayType = (ValueType.Array)valueType;
                     if (arrayType.LengthExpression == null)
                     {
@@ -565,13 +565,13 @@ namespace SPAGS
                         WriteExpression(arrayType.LengthExpression, output, indent + 1);
                     }
                     break;
-                case ValueType.ValueTypeCategory.Float:
+                case ValueTypeCategory.Float:
                     Indented(output, indent, "FLOAT");
                     break;
-                case ValueType.ValueTypeCategory.FunctionSignature:
+                case ValueTypeCategory.FunctionSignature:
                     Indented(output, indent, "FUNCTION SIGNATURE");
                     break;
-                case ValueType.ValueTypeCategory.Int:
+                case ValueTypeCategory.Int:
                     if (valueType is ValueType.Enum)
                     {
                         ValueType.Enum enumType = (ValueType.Enum)valueType;
@@ -583,16 +583,16 @@ namespace SPAGS
                         Indented(output, indent, "INT");
                     }
                     break;
-                case ValueType.ValueTypeCategory.Null:
+                case ValueTypeCategory.Null:
                     Indented(output, indent, "NULL");
                     break;
-                case ValueType.ValueTypeCategory.StringBuffer:
+                case ValueTypeCategory.StringBuffer:
                     Indented(output, indent, "STRING BUFFER");
                     break;
-                case ValueType.ValueTypeCategory.StringValue:
+                case ValueTypeCategory.StringValue:
                     Indented(output, indent, "STRING");
                     break;
-                case ValueType.ValueTypeCategory.Struct:
+                case ValueTypeCategory.Struct:
                     ValueType.Struct structType = (ValueType.Struct)valueType;
                     if (structType.IsInternalString)
                     {
@@ -610,7 +610,7 @@ namespace SPAGS
                         }
                     }
                     break;
-                case ValueType.ValueTypeCategory.Void:
+                case ValueTypeCategory.Void:
                     Indented(output, indent, "VOID");
                     break;
             }
