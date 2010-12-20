@@ -270,7 +270,14 @@ namespace SPAGS
                                 // Thanks to Downhill Module for revealing that functions CAN be explicitly exported
                                 // even though they are automatically
                                 INameHolder holder = AdvanceNameHolder<INameHolder>("export token");
-                                if (holder is ScriptVariable) ((ScriptVariable)holder).Exported = true;
+                                if (holder is ScriptVariable)
+                                {
+                                    ((ScriptVariable)holder).Exported = true;
+                                    if (!Exported.ContainsKey(holder.Name))
+                                    {
+                                        Exported.Add(holder);
+                                    }
+                                }
                                 if (token.Type == TokenType.Comma)
                                 {
                                     AdvanceToken(/* TokenType.Comma */);
@@ -355,7 +362,10 @@ namespace SPAGS
                                             individualValueType = new ValueType.Array(valueType, AdvanceExpression());
                                             AdvanceToken(TokenType.RightSquareBracket);
                                         }
-                                        if (!(mod_import || mod_tryimport) && valueType is ValueType.Struct) ((ValueType.Struct)valueType).InstantiatedArray = true;
+                                        if (!(mod_import || mod_tryimport) && valueType is ValueType.Struct)
+                                        {
+                                            ((ValueType.Struct)valueType).InstantiatedArray = true;
+                                        }
                                     }
                                     else
                                     {
@@ -364,7 +374,11 @@ namespace SPAGS
                                         if (!(mod_import || mod_tryimport) && valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                                     }
 
-                                    if (existingHolder != null)
+                                    if ((mod_import || mod_tryimport) && existingHolder == null && Exported.TryGetValue(name, out existingHolder))
+                                    {
+                                        Namespace.Add(existingHolder);
+                                    }
+                                    else if (existingHolder != null)
                                     {
                                         ScriptVariable earlierVariable = existingHolder as ScriptVariable;
                                         if (earlierVariable == null || earlierVariable.Defined)
@@ -450,7 +464,16 @@ namespace SPAGS
                                 parameters.Insert(0, new ParameterDef("this", thisType, null));
                             }
 
-                            if (LookUpName(name, out existing))
+                            if ((mod_import || mod_tryimport) && Exported.TryGetValue(name, out existing))
+                            {
+                                function = existing as Function;
+                                if (function == null)
+                                {
+                                    throw new Exception("name already in use: " + name);
+                                }
+                                Namespace.Add(function);
+                            }
+                            else if (LookUpName(name, out existing))
                             {
                                 function = existing as Function;
                                 if (function == null)
@@ -484,6 +507,10 @@ namespace SPAGS
                                 }
 
                                 function.Body = AdvanceBlock(parameterScope);
+                                if (!Exported.ContainsKey(function.Name))
+                                {
+                                    Exported.Add(function);
+                                }
                                 function.OwnerScript = script;
                                 script.DefinedFunctions.Add(function);
                             }

@@ -586,6 +586,7 @@ namespace SPAGS
         }
 
         public NameDictionary Namespace = new NameDictionary();
+        public NameDictionary Exported = new NameDictionary();
 
         bool LookUpName(string name, out INameHolder nameHolder)
         {

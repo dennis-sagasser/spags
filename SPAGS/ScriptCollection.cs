@@ -8,11 +8,13 @@ namespace SPAGS
     {
         private ScriptParser parser;
         public NameDictionary GlobalNamespace = new NameDictionary();
+        public NameDictionary Exported = new NameDictionary();
         public List<Script> Headers = new List<Script>();
 
         public ScriptCollection(string agsVersion)
         {
             parser = new ScriptParser(new System.Version(agsVersion));
+            parser.Exported = Exported;
 
             foreach (Token.Keyword keyword in Token.YieldKeywords())
             {
