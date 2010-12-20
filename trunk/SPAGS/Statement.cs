@@ -30,6 +30,10 @@ namespace SPAGS
         {
             yield break;
         }
+        public virtual bool Returns()
+        {
+            return false;
+        }
         public virtual IEnumerable<Function> YieldFunctions()
         {
             foreach (Expression expr in this.YieldExpressions())
@@ -81,6 +85,15 @@ namespace SPAGS
             public override IEnumerable<Statement> YieldChildStatements()
             {
                 foreach (Statement child in ChildStatements) yield return child;
+            }
+
+            public override bool Returns()
+            {
+                foreach (Statement child in ChildStatements)
+                {
+                    if (child.Returns()) return true;
+                }
+                return false;
             }
 
             public override IEnumerable<Expression> YieldExpressions()
@@ -226,6 +239,10 @@ namespace SPAGS
                     ElseDoThis.WriteTo(output, indent);
                 }
             }
+            public override bool Returns()
+            {
+                return ThenDoThis.Returns() && (ElseDoThis != null) && ElseDoThis.Returns();
+            }
         }
 
         public class Assign : Statement
@@ -300,6 +317,10 @@ namespace SPAGS
                     Value.WriteTo(output);
                     output.Write(";");
                 }
+            }
+            public override bool Returns()
+            {
+                return true;
             }
         }
 
