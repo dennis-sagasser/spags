@@ -408,7 +408,7 @@ namespace SPAGS
                     }
                     break;
                 case ExpressionType.BinaryOperator:
-                    WriteBinaryOperatorJS((Expression.BinaryOperator)expr, output, indent);
+                    WriteBinaryOperatorJS((Expression.BinaryOperator)expr, output, indent, false);
                     break;
                 case ExpressionType.Call:
                     Expression.Call call = (Expression.Call)expr;
@@ -500,18 +500,26 @@ namespace SPAGS
             }
         }
 
-        void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent)
+        void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent, bool parens)
         {
             if (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueType.ValueTypeCategory.Int)
             {
                 output.Write("Math.floor(");
-                WriteExpressionJS(op.Left, output, indent + 1);
-                output.Write(" / ");
-                WriteExpressionJS(op.Right, output, indent + 1);
-                output.Write(")");
-                return;
+                parens = true;
             }
-            WriteExpressionJS(op.Left, output, indent + 1);
+            else if (parens)
+            {
+                output.Write("(");
+            }
+            Expression.BinaryOperator leftBinOp = op.Left as Expression.BinaryOperator;
+            if (leftBinOp != null)
+            {
+                WriteBinaryOperatorJS(leftBinOp, output, indent, true);
+            }
+            else
+            {
+                WriteExpressionJS(op.Left, output, indent + 1);
+            }
             switch (op.Token.Type)
             {
                 case TokenType.Add:
@@ -569,7 +577,19 @@ namespace SPAGS
                     output.Write(" - ");
                     break;
             }
-            WriteExpressionJS(op.Right, output, indent + 1);
+            Expression.BinaryOperator rightBinOp = op.Right as Expression.BinaryOperator;
+            if (rightBinOp != null)
+            {
+                WriteBinaryOperatorJS(rightBinOp, output, indent, true);
+            }
+            else
+            {
+                WriteExpressionJS(op.Right, output, indent + 1);
+            }
+            if (parens)
+            {
+                output.Write(")");
+            }
         }
 
         void WriteUnaryOperatorJS(Expression.UnaryOperator op, TextWriter output, int indent)
