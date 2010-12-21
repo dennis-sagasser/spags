@@ -65,13 +65,12 @@ namespace SPAGS
                         }
                         else
                         {
-                            newStruct = new ValueType.Struct(structName);
+                            newStruct = new ValueType.Struct(structName, mod_internalstring);
                             Namespace.Add(newStruct);
                         }
                         newStruct.OwnerScript = script;
                         script.DefinedStructs.Add(newStruct);
                         newStruct.IsAutoPtr = mod_autoptr;
-                        newStruct.IsInternalString = mod_internalstring;
                         newStruct.IsManaged = mod_managed;
                         if (token.Type == TokenType.Extends)
                         {
