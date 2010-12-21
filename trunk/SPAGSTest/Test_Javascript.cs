@@ -227,7 +227,7 @@ namespace SPAGS
                                         output.Write(") - ");
                                         break;
                                 }
-                                WriteExpressionJS(assign.Value, output, indent);
+                                WriteExpressionJS(assign.Value, output, indent, attr.TheAttribute.Type);
                                 output.WriteLine(");");
                             }
                         }
@@ -399,7 +399,7 @@ namespace SPAGS
                     else
                     {
                         output.Write("return ");
-                        WriteExpressionJS(ret.Value, output, indent + 1);
+                        WriteExpressionJS(ret.Value, output, indent + 1, currentFunction.Signature.ReturnType);
                         output.WriteLine(";");
                     }
                     break;
@@ -454,6 +454,21 @@ namespace SPAGS
 
         void WriteExpressionJS(Expression expr, TextWriter output, int indent)
         {
+            WriteExpressionJS(expr, output, indent, null);
+        }
+        void WriteExpressionJS(Expression expr, TextWriter output, int indent, ValueType expectedType)
+        {
+            if (expectedType != null)
+            {
+                ValueType exprValType = expr.GetValueType();
+                if (expectedType.IsInternalString
+                    && exprValType.Category == ValueTypeCategory.StringBuffer)
+                {
+                    WriteExpressionJS(expr, output, indent, null);
+                    output.Write(".value");
+                    return;
+                }
+            }
             switch (expr.Type)
             {
                 case ExpressionType.AllocateArray:
@@ -527,10 +542,22 @@ namespace SPAGS
                     {
                         WriteExpressionJS(thisObj, output, indent + 1);
                     }
+                    ValueType.FunctionSignature signature = call.CallingOn.GetValueType() as ValueType.FunctionSignature;
+                    if (signature == null)
+                    {
+                        throw new Exception("Calling on a non-callable object: " + call.CallingOn.ToString());
+                    }
                     for (int i = 0; i < call.Parameters.Count; i++)
                     {
                         if (i != 0 || thisObj != null) output.Write(", ");
-                        WriteExpressionJS(call.Parameters[i], output, indent + 1);
+                        if (i < signature.Parameters.Count)
+                        {
+                            WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
+                        }
+                        else
+                        {
+                            WriteExpressionJS(call.Parameters[i], output, indent + 1);
+                        }
                     }
                     output.Write(")");
                     break;
@@ -602,8 +629,6 @@ namespace SPAGS
                 case ExpressionType.StringLiteral:
                     Expression.StringLiteral stringLiteral = (Expression.StringLiteral)expr;
                     output.Write("\"" + stringLiteral.Value.Replace("\"", "\\\"") + "\"");
-                    break;
-                case ExpressionType.StructType:
                     break;
                 case ExpressionType.UnaryOperator:
                     WriteUnaryOperatorJS((Expression.UnaryOperator)expr, output, indent);

@@ -17,8 +17,13 @@ namespace SPAGS
         public class Struct : ValueType.Named
         {
             public Struct(string name)
+                : this(name, false)
+            {
+            }
+            public Struct(string name, bool isInternalString)
                 : base(name, ValueTypeCategory.Struct)
             {
+                _isInternalString = isInternalString;
             }
             public bool Instantiated;
             public bool InstantiatedArray;
@@ -36,7 +41,14 @@ namespace SPAGS
             }
             public bool IsManaged;
             public bool IsAutoPtr;
-            public bool IsInternalString;
+            bool _isInternalString;
+            public override bool IsInternalString
+            {
+                get
+                {
+                    return _isInternalString;
+                }
+            }
             protected void WriteTo(TextWriter output)
             {
                 if (IsInternalString) output.Write("internalstring ");

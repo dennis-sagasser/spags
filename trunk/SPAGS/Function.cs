@@ -9,7 +9,7 @@ namespace SPAGS
     public class Function : INameHolder
     {
         public NameHolderType NameHolderType { get { return NameHolderType.Function; } }
-        public Function(string name, SignatureDef signature)
+        public Function(string name, ValueType.FunctionSignature signature)
         {
             this.name = name;
             Signature = signature;
@@ -22,14 +22,14 @@ namespace SPAGS
             if (!CalledBy.Contains(func)) CalledBy.Add(func);
         }
         public Function(string name, ValueType returnType, ParameterList parameters)
-            : this(name, new SignatureDef(returnType, parameters))
+            : this(name, new ValueType.FunctionSignature(returnType, parameters))
         {
         }
         public object UserData;
         public Script OwnerScript;
         private readonly string name;
         public string Name { get { return name; } }
-        public readonly SignatureDef Signature;
+        public readonly ValueType.FunctionSignature Signature;
         public bool Imported;
         public bool MarkedAsBlocking;
         public override string ToString()
@@ -52,24 +52,6 @@ namespace SPAGS
             }
             output.Write(" ");
             Body.WriteTo(output, 0);
-        }
-        public class SignatureDef : ValueType
-        {
-            public SignatureDef(ValueType returnType, ParameterList parameters)
-                : base("(function signature)", ValueTypeCategory.FunctionSignature)
-            {
-                ReturnType = returnType;
-                Parameters = parameters;
-            }
-            public readonly ValueType ReturnType;
-            public readonly ParameterList Parameters;
-            public override string Name
-            {
-                get
-                {
-                    return "<<" + Parameters + " -> " + ReturnType.Name + ">>";
-                }
-            }
         }
     }
     public class ParameterDef

@@ -62,6 +62,14 @@ namespace SPAGS
 
         public static readonly ValueType StringValue = new ValueType("const string", ValueTypeCategory.StringValue);
 
+        public virtual bool IsInternalString
+        {
+            get
+            {
+                return false;
+            }
+        }
+
         public static IEnumerable<Named> YieldValueTypes()
         {
             yield return Int;
@@ -71,6 +79,25 @@ namespace SPAGS
             yield return Short;
             yield return Void;
             yield return StringBuffer;
+        }
+
+        public class FunctionSignature : ValueType
+        {
+            public FunctionSignature(ValueType returnType, ParameterList parameters)
+                : base("(function signature)", ValueTypeCategory.FunctionSignature)
+            {
+                ReturnType = returnType;
+                Parameters = parameters;
+            }
+            public readonly ValueType ReturnType;
+            public readonly ParameterList Parameters;
+            public override string Name
+            {
+                get
+                {
+                    return "<<" + Parameters + " -> " + ReturnType.Name + ">>";
+                }
+            }
         }
     }
 }
