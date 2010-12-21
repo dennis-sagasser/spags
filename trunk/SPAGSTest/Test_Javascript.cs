@@ -733,7 +733,10 @@ namespace SPAGS
                     output.Write("-");
                     break;
             }
+            bool parens = (op.Operand is Expression.BinaryOperator);
+            if (parens) output.Write("(");
             WriteExpressionJS(op.Operand, output, indent + 1);
+            if (parens) output.Write(")");
         }
         bool StaticValue(Expression expr)
         {
