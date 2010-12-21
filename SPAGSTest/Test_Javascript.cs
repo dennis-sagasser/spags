@@ -189,40 +189,46 @@ namespace SPAGS
                         {
                             WriteFunctionJS(attr.TheAttribute.Getter, output);
                             output.Write("(");
+                            bool values = false;
                             if (attr.Target != null)
                             {
+                                values = true;
                                 WriteExpressionJS(attr.Target, output, indent);
-                                output.Write(", ");
                             }
                             if (index != null)
                             {
+                                if (values)
+                                {
+                                    output.Write(", ");
+                                }
                                 WriteExpressionJS(index.Index, output, indent);
-                                output.Write(", ");
                             }
                             if (assign.Value == null)
                             {
                                 switch (assign.AssignType)
                                 {
                                     case TokenType.Increment:
-                                        output.WriteLine(" + 1);");
+                                        output.WriteLine(") + 1);");
                                         break;
                                     case TokenType.Decrement:
-                                        output.WriteLine(" - 1);");
+                                        output.WriteLine(") - 1);");
                                         break;
                                 }
                             }
                             else
                             {
+
                                 switch (assign.AssignType)
                                 {
                                     case TokenType.AddAssign:
-                                        output.Write(" + ");
+                                        output.Write(") + ");
                                         break;
                                     case TokenType.SubtractAssign:
-                                        output.Write(" - ");
+                                        output.Write(") - ");
                                         break;
                                 }
                                 WriteExpressionJS(assign.Value, output, indent);
+                                output.WriteLine(");");
                             }
                         }
                         break;
