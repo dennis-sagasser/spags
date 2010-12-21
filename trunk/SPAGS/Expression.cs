@@ -32,7 +32,10 @@ namespace SPAGS
         Constant,
         CharLiteral,
         FloatLiteral,
-        Field
+        Field,
+
+        AllocStringBuffer,
+        AllocStruct
     }
     public abstract class Expression
     {
@@ -855,6 +858,54 @@ namespace SPAGS
                 AllocateArray allocArray = ex as AllocateArray;
                 return (allocArray != null) && (allocArray.ElementType == this.ElementType)
                     && allocArray.Length.Equals(this.Length);
+            }
+        }
+        public class AllocateStringBuffer : Expression
+        {
+            public AllocateStringBuffer()
+                : base(ExpressionType.AllocStringBuffer)
+            {
+            }
+            public override void WriteTo(TextWriter output)
+            {
+                output.Write("<<New String Buffer>>");
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex.Type == ExpressionType.AllocStringBuffer);
+            }
+            public override ValueType GetValueType()
+            {
+                return ValueType.StringBuffer;
+            }
+        }
+        public class AllocateStruct : Expression
+        {
+            public readonly ValueType.Struct TheStructType;
+            public AllocateStruct(ValueType.Struct structType)
+                : base(ExpressionType.AllocStruct)
+            {
+                TheStructType = structType;
+            }
+            public override void WriteTo(TextWriter output)
+            {
+                output.Write("<<New " + TheStructType.Name + ">>");
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is AllocateStruct) && (((AllocateStruct)ex).TheStructType == this.TheStructType);
+            }
+            public override ValueType GetValueType()
+            {
+                return TheStructType;
             }
         }
     }

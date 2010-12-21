@@ -37,6 +37,16 @@ namespace SPAGS
                     return new Expression.IntegerLiteral(0);
                 case ValueTypeCategory.Float:
                     return new Expression.FloatLiteral(0);
+                case ValueTypeCategory.StringBuffer:
+                    return new Expression.AllocateStringBuffer();
+                case ValueTypeCategory.Struct:
+                    ValueType.Struct structType = (ValueType.Struct)this;
+                    if (structType.IsManaged) return Expression.Null;
+                    return new Expression.AllocateStruct(structType);
+                case ValueTypeCategory.Array:
+                    ValueType.Array arrayType = (ValueType.Array)this;
+                    if (arrayType.LengthExpression == null) return Expression.Null;
+                    return new Expression.AllocateArray(arrayType.ElementType, arrayType.LengthExpression);
                 default:
                     return Expression.Null;
             }
