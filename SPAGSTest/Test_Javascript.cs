@@ -74,56 +74,50 @@ namespace SPAGS
                 }
                 output.WriteLine(",");
             }
-            /*
             foreach (ValueType.Struct structType in script.DefinedStructs)
             {
-                string name = "STRUCT";
-                if (structType.IsManaged) name = "MANAGED " + name;
-                Indented(output, indent, "DEFINE " + name + " \"" + structType.Name + "\":");
-                foreach (StructMember member in structType.Members.EachOf<StructMember>())
+                if (structType.IsManaged) continue;
+                output.WriteLine("  \"" + structType.Name + "\": util.createStruct(function() {");
+                foreach (StructMember.Field field in structType.Members.EachOf<StructMember.Field>())
                 {
-                    switch (member.MemberType)
+                    switch (field.Type.Category)
                     {
-                        case StructMemberType.Attribute:
-                            StructMember.Attribute attr = (StructMember.Attribute)member;
-                            name = "ATTRIBUTE";
-                            if (attr.IsArray)
+                        case ValueTypeCategory.Array:
+                            ValueType.Array arrayType = (ValueType.Array)field.Type;
+                            output.Write("    this." + field.Name + " = ");
+                            switch (arrayType.Category)
                             {
-                                name = "ARRAY " + name;
+                                case ValueTypeCategory.Float:
+                                case ValueTypeCategory.Int:
+                                    output.Write("util.arrayZeroes(");
+                                    break;
+                                default:
+                                    output.Write("util.arrayNulls(");
+                                    break;
                             }
-                            if (attr.IsStatic)
-                            {
-                                name = "STATIC " + name;
-                            }
-                            if (attr.IsReadOnly)
-                            {
-                                name = "READONLY " + name;
-                            }
-                            Indented(output, indent + 1, name + " \"" + attr.Name + "\":");
-                            WriteValueType(attr.Type, output, indent + 2);
-                            break;
-                        case StructMemberType.Field:
-                            StructMember.Field field = (StructMember.Field)member;
-                            Indented(output, indent + 1, "FIELD \"" + field.Name + "\":");
-                            WriteValueType(field.Type, output, indent + 2);
-                            break;
-                        case StructMemberType.Method:
-                            StructMember.Method method = (StructMember.Method)member;
-                            name = "METHOD";
-                            if (method.IsExtender)
-                            {
-                                name = "EXTENDER " + name;
-                            }
-                            if (method.IsStatic)
-                            {
-                                name = "STATIC " + name;
-                            }
-                            Indented(output, indent + 1, name + " \"" + method.Name + "\"");
+                            WriteExpressionJS(arrayType.LengthExpression, output, indent);
+                            output.WriteLine(");");
                             break;
                     }
                 }
+                output.WriteLine("  }, {");
+                foreach (StructMember.Field field in structType.Members.EachOf<StructMember.Field>())
+                {
+                    switch (field.Type.Category)
+                    {
+                        case ValueTypeCategory.Int:
+                        case ValueTypeCategory.Float:
+                        case ValueTypeCategory.Struct:
+                        case ValueTypeCategory.StringValue:
+                        case ValueTypeCategory.StringBuffer:
+                            output.Write("    \"" + field.Name + "\": ");
+                            WriteExpressionJS(field.Type.CreateDefaultValueExpression(), output, indent);
+                            output.WriteLine(";");
+                            break;
+                    }
+                }
+                output.WriteLine("  }),");
             }
-            */
             foreach (Function func in script.DefinedFunctions)
             {
                 currentFunction = func;
@@ -464,6 +458,12 @@ namespace SPAGS
                         case ValueTypeCategory.Int:
                             output.Write("util.arrayZeroes(");
                             break;
+                        case ValueTypeCategory.Struct:
+                            ValueType.Struct structType = (ValueType.Struct)allocArray.ElementType;
+                            if (structType.IsManaged) goto default;
+                            WriteScriptOwnerJS(structType.OwnerScript, output);
+                            output.Write("." + structType.Name + ".createArray(");
+                            break;
                         default:
                             output.Write("util.arrayNulls(");
                             break;
@@ -601,6 +601,15 @@ namespace SPAGS
                     break;
                 case ExpressionType.UnaryOperator:
                     WriteUnaryOperatorJS((Expression.UnaryOperator)expr, output, indent);
+                    break;
+                case ExpressionType.AllocStringBuffer:
+                    output.Write("new util.StringBuffer()");
+                    break;
+                case ExpressionType.AllocStruct:
+                    Expression.AllocateStruct newStruct = (Expression.AllocateStruct)expr;
+                    output.Write("new ");
+                    WriteScriptOwnerJS(newStruct.TheStructType.OwnerScript, output);
+                    output.Write("." + newStruct.TheStructType.Name + "()");
                     break;
                 case ExpressionType.Variable:
                     Expression.Variable var = (Expression.Variable)expr;
