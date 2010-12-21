@@ -175,32 +175,6 @@ namespace SPAGS
                 IfThisIsTrue = ifThisIsTrue;
                 ThenDoThis = thenDoThis;
                 ElseDoThis = elseDoThis;
-
-                switch (ThenDoThis.Type)
-                {
-                    case StatementType.If:
-                    case StatementType.While:
-                        Block block = new Block(new NameDictionary());
-                        block.ChildStatements.Add(ThenDoThis);
-                        ThenDoThis = block;
-                        break;
-                    case StatementType.Block:
-                        Block _block = (Block)ThenDoThis;
-                        if (_block.ChildStatements.Count == 1)
-                        {
-                            switch (_block.ChildStatements[0].Type)
-                            {
-                                case StatementType.VariableDeclaration:
-                                case StatementType.If:
-                                case StatementType.While:
-                                    break;
-                                default:
-                                    ThenDoThis = _block.ChildStatements[0];
-                                    break;
-                            }
-                        }
-                        break;
-                }
             }
             public readonly Expression IfThisIsTrue;
             public readonly Statement ThenDoThis;
