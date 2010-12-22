@@ -63,6 +63,11 @@ namespace SPAGS
                 }
                 output.Write("};");
             }
+            public override Expression CreateDefaultValueExpression()
+            {
+                if (this.IsManaged) return Expression.Null;
+                return new Expression.AllocateStruct(this);
+            }
         }
     }
 
