@@ -62,11 +62,12 @@ namespace SPAGS
 
         public static readonly ValueType StringValue = new ValueType("const string", ValueTypeCategory.StringValue);
 
+        // overridden by internalstring struct type
         public virtual bool IsInternalString
         {
             get
             {
-                return false;
+                return (this.Category == ValueTypeCategory.StringValue);
             }
         }
 
