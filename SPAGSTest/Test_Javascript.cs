@@ -712,7 +712,7 @@ namespace SPAGS
                 (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueTypeCategory.Int) 
                 ||
                 ((op.Token.Type == TokenType.Add || op.Token.Type == TokenType.Subtract || op.Token.Type == TokenType.Multiply)
-                  && op.Right.GetValueType().IntType == "int32")
+                  && op.GetValueType().IntType == "int32")
                 )
             {
                 output.Write("(");
