@@ -618,7 +618,7 @@ namespace SPAGS
                         default:
                             if ((int)charLiteral.Value < 32 || (int)charLiteral.Value >= 127)
                             {
-                                output.Write(" /* '\\x{0:X2}' */", (int)charLiteral.Value);
+                                output.Write((int)charLiteral.Value);
                             }
                             else
                             {
