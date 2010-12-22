@@ -799,16 +799,25 @@ namespace SPAGS
             switch (op.Token.Type)
             {
                 case TokenType.LogicalNot:
-                    output.Write("!");
+                    {
+                        output.Write("(");
+                        bool parens = (op.Operand is Expression.BinaryOperator);
+                        if (parens) output.Write("(");
+                        WriteExpressionJS(op.Operand, output, indent + 1);
+                        if (parens) output.Write(")");
+                        output.Write(" ? 0 : 1)");
+                    }
                     break;
                 case TokenType.Subtract:
-                    output.Write("-");
+                    {
+                        output.Write("-");
+                        bool parens = (op.Operand is Expression.BinaryOperator);
+                        if (parens) output.Write("(");
+                        WriteExpressionJS(op.Operand, output, indent + 1);
+                        if (parens) output.Write(")");
+                    }
                     break;
             }
-            bool parens = (op.Operand is Expression.BinaryOperator);
-            if (parens) output.Write("(");
-            WriteExpressionJS(op.Operand, output, indent + 1);
-            if (parens) output.Write(")");
         }
         bool StaticValue(Expression expr)
         {
