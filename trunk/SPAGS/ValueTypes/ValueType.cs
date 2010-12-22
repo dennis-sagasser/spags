@@ -29,6 +29,18 @@ namespace SPAGS
             public Named(string name, ValueTypeCategory cat) : base(name, cat) { }
             public virtual NameHolderType NameHolderType { get { return NameHolderType.BasicType; } }
         }
+
+        public string IntType
+        {
+            get
+            {
+                if (this.Category != ValueTypeCategory.Int) return null;
+                if (this.Name == "char") return "uint8";
+                if (this.Name == "short") return "int16";
+                return "int32";
+            }
+        }
+
         public virtual Expression CreateDefaultValueExpression()
         {
             switch (Category)

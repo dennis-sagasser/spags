@@ -703,27 +703,22 @@ namespace SPAGS
 
         void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent, bool parens)
         {
-            bool forceInt = false;
-            if ((op.Token.Type == TokenType.Divide || op.Token.Type == TokenType.Add || op.Token.Type == TokenType.Subtract
-                || op.Token.Type == TokenType.Multiply)
-                && op.Right.GetValueType().Category == ValueTypeCategory.Int)
-            {
-                output.Write("((");
-                forceInt = true;
-            }
-            else if (parens)
+            if (parens)
             {
                 output.Write("(");
             }
-            Expression.BinaryOperator leftBinOp = op.Left as Expression.BinaryOperator;
-            if (leftBinOp != null && leftBinOp.Token.Type == op.Token.Type)
+            bool forceInt = false;
+            if (
+                (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueTypeCategory.Int) 
+                ||
+                ((op.Token.Type == TokenType.Add || op.Token.Type == TokenType.Subtract || op.Token.Type == TokenType.Multiply)
+                  && op.Right.GetValueType().IntType == "int32")
+                )
             {
-                WriteExpressionJS(op.Left, output, indent + 1, null, false);
+                output.Write("(");
+                forceInt = true;
             }
-            else
-            {
-                WriteExpressionJS(op.Left, output, indent + 1, null, true);
-            }
+            WriteExpressionJS(op.Left, output, indent + 1, null, true);
             switch (op.Token.Type)
             {
                 case TokenType.Add:
@@ -784,9 +779,9 @@ namespace SPAGS
             WriteExpressionJS(op.Right, output, indent + 1, null, true);
             if (forceInt)
             {
-                output.Write(") | 0)");
+                output.Write(") | 0");
             }
-            else if (parens)
+            if (parens)
             {
                 output.Write(")");
             }
