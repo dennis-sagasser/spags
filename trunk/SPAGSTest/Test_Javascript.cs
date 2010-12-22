@@ -84,8 +84,8 @@ namespace SPAGS
                     {
                         case ValueTypeCategory.Array:
                             ValueType.Array arrayType = (ValueType.Array)field.Type;
-                            output.Write("    this." + field.Name + " = ");
-                            switch (arrayType.Category)
+                            output.Write("      this." + field.Name + " = ");
+                            switch (arrayType.ElementType.Category)
                             {
                                 case ValueTypeCategory.Float:
                                 case ValueTypeCategory.Int:
@@ -100,9 +100,15 @@ namespace SPAGS
                             break;
                     }
                 }
-                output.WriteLine("  }, {");
+                output.WriteLine("    }, {");
+                List<StructMember.Field> fields = new List<StructMember.Field>();
                 foreach (StructMember.Field field in structType.Members.EachOf<StructMember.Field>())
                 {
+                    fields.Add(field);
+                }
+                for(int i = 0; i < fields.Count; i++)
+                {
+                    StructMember.Field field = fields[i];
                     switch (field.Type.Category)
                     {
                         case ValueTypeCategory.Int:
@@ -110,13 +116,20 @@ namespace SPAGS
                         case ValueTypeCategory.Struct:
                         case ValueTypeCategory.StringValue:
                         case ValueTypeCategory.StringBuffer:
-                            output.Write("    \"" + field.Name + "\": ");
+                            output.Write("      \"" + field.Name + "\": ");
                             WriteExpressionJS(field.Type.CreateDefaultValueExpression(), output, indent);
-                            output.WriteLine(";");
+                            if (i == fields.Count - 1)
+                            {
+                                output.WriteLine();
+                            }
+                            else
+                            {
+                                output.WriteLine(",");
+                            }
                             break;
                     }
                 }
-                output.WriteLine("  }),");
+                output.WriteLine("    }),");
             }
             foreach (Function func in script.DefinedFunctions)
             {
@@ -266,7 +279,7 @@ namespace SPAGS
                             default:
                                 throw new Exception("Unexpected AssignType: " + assign.AssignType);
                         }
-                        WriteExpressionJS(assign.Value, output, indent + 1);
+                        WriteExpressionJS(assign.Value, output, indent + 1, assign.Target.GetValueType());
                         output.WriteLine(";");
                     }
                     break;
@@ -468,6 +481,27 @@ namespace SPAGS
                     output.Write(".value");
                     return;
                 }
+                if (expectedType.Category == ValueTypeCategory.Int)
+                {
+                    int value;
+                    bool constantValue = expr.TryGetIntValue(out value);
+                    if (expectedType.Name == "short" && exprValType.Name == "int"
+                        && !(constantValue && value == ((int)(short)value)))
+                    {
+                        output.Write("((");
+                        WriteExpressionJS(expr, output, indent, null);
+                        output.Write(") << 16 >> 16)");
+                        return;
+                    }
+                    else if (expectedType.Name == "char" && exprValType.Name != "char"
+                        && !(constantValue && value==((int)(char)value)))
+                    {
+                        output.Write("((");
+                        WriteExpressionJS(expr, output, indent, null);
+                        output.Write(") & 0xff)");
+                        return;
+                    }
+                }
             }
             switch (expr.Type)
             {
@@ -663,10 +697,13 @@ namespace SPAGS
 
         void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent, bool parens)
         {
-            if (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueTypeCategory.Int)
+            bool forceInt = false;
+            if ((op.Token.Type == TokenType.Divide || op.Token.Type == TokenType.Add || op.Token.Type == TokenType.Subtract
+                || op.Token.Type == TokenType.Multiply)
+                && op.Right.GetValueType().Category == ValueTypeCategory.Int)
             {
-                output.Write("Math.floor(");
-                parens = true;
+                output.Write("((");
+                forceInt = true;
             }
             else if (parens)
             {
@@ -747,7 +784,11 @@ namespace SPAGS
             {
                 WriteExpressionJS(op.Right, output, indent + 1);
             }
-            if (parens)
+            if (forceInt)
+            {
+                output.Write(") | 0)");
+            }
+            else if (parens)
             {
                 output.Write(")");
             }
