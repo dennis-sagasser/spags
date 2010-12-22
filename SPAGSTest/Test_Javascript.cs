@@ -467,9 +467,13 @@ namespace SPAGS
 
         void WriteExpressionJS(Expression expr, TextWriter output, int indent)
         {
-            WriteExpressionJS(expr, output, indent, null);
+            WriteExpressionJS(expr, output, indent, null, false);
         }
         void WriteExpressionJS(Expression expr, TextWriter output, int indent, ValueType expectedType)
+        {
+            WriteExpressionJS(expr, output, indent, expectedType, false);
+        }
+        void WriteExpressionJS(Expression expr, TextWriter output, int indent, ValueType expectedType, bool selfContained)
         {
             if (expectedType != null)
             {
@@ -488,17 +492,19 @@ namespace SPAGS
                     if (expectedType.Name == "short" && exprValType.Name == "int"
                         && !(constantValue && value == ((int)(short)value)))
                     {
-                        output.Write("((");
-                        WriteExpressionJS(expr, output, indent, null);
-                        output.Write(") << 16 >> 16)");
+                        if (selfContained) output.Write("(");
+                        WriteExpressionJS(expr, output, indent, null, true);
+                        output.Write(" << 16 >> 16");
+                        if (selfContained) output.Write(")");
                         return;
                     }
                     else if (expectedType.Name == "char" && exprValType.Name != "char"
                         && !(constantValue && value==((int)(char)value)))
                     {
-                        output.Write("((");
-                        WriteExpressionJS(expr, output, indent, null);
-                        output.Write(") & 0xff)");
+                        if (selfContained) output.Write("(");
+                        WriteExpressionJS(expr, output, indent, null, true);
+                        output.Write(" & 0xff");
+                        if (selfContained) output.Write(")");
                         return;
                     }
                 }
@@ -564,7 +570,7 @@ namespace SPAGS
                     }
                     break;
                 case ExpressionType.BinaryOperator:
-                    WriteBinaryOperatorJS((Expression.BinaryOperator)expr, output, indent, false);
+                    WriteBinaryOperatorJS((Expression.BinaryOperator)expr, output, indent, selfContained);
                     break;
                 case ExpressionType.Call:
                     Expression.Call call = (Expression.Call)expr;
@@ -710,13 +716,13 @@ namespace SPAGS
                 output.Write("(");
             }
             Expression.BinaryOperator leftBinOp = op.Left as Expression.BinaryOperator;
-            if (leftBinOp != null && leftBinOp.Token.Type != op.Token.Type)
+            if (leftBinOp != null && leftBinOp.Token.Type == op.Token.Type)
             {
-                WriteBinaryOperatorJS(leftBinOp, output, indent, true);
+                WriteExpressionJS(op.Left, output, indent + 1, null, false);
             }
             else
             {
-                WriteExpressionJS(op.Left, output, indent + 1);
+                WriteExpressionJS(op.Left, output, indent + 1, null, true);
             }
             switch (op.Token.Type)
             {
@@ -775,15 +781,7 @@ namespace SPAGS
                     output.Write(" - ");
                     break;
             }
-            Expression.BinaryOperator rightBinOp = op.Right as Expression.BinaryOperator;
-            if (rightBinOp != null)
-            {
-                WriteBinaryOperatorJS(rightBinOp, output, indent, true);
-            }
-            else
-            {
-                WriteExpressionJS(op.Right, output, indent + 1);
-            }
+            WriteExpressionJS(op.Right, output, indent + 1, null, true);
             if (forceInt)
             {
                 output.Write(") | 0)");
@@ -799,25 +797,13 @@ namespace SPAGS
             switch (op.Token.Type)
             {
                 case TokenType.LogicalNot:
-                    {
-                        output.Write("(");
-                        bool parens = (op.Operand is Expression.BinaryOperator);
-                        if (parens) output.Write("(");
-                        WriteExpressionJS(op.Operand, output, indent + 1);
-                        if (parens) output.Write(")");
-                        output.Write(" ? 0 : 1)");
-                    }
+                    output.Write("!");
                     break;
                 case TokenType.Subtract:
-                    {
-                        output.Write("-");
-                        bool parens = (op.Operand is Expression.BinaryOperator);
-                        if (parens) output.Write("(");
-                        WriteExpressionJS(op.Operand, output, indent + 1);
-                        if (parens) output.Write(")");
-                    }
+                    output.Write("-");
                     break;
             }
+            WriteExpressionJS(op.Operand, output, indent + 1, null, true);
         }
         bool StaticValue(Expression expr)
         {
