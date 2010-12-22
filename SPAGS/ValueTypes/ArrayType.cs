@@ -24,6 +24,11 @@ namespace SPAGS
                     return ElementType.Name + "[]";
                 }
             }
+            public override Expression CreateDefaultValueExpression()
+            {
+                if (this.LengthExpression == null) return Expression.Null;
+                return new Expression.AllocateArray(this.ElementType, this.LengthExpression);
+            }
         }
     }
 }

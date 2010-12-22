@@ -26,6 +26,14 @@ namespace SPAGS
                 }
                 return sb.ToString();
             }
+            public override Expression CreateDefaultValueExpression()
+            {
+                foreach (EnumValue val in this.Entries)
+                {
+                    if (val.Value == 0) return new Expression.EnumValue(val);
+                }
+                return new Expression.IntegerLiteral(0);
+            }
             public void WriteTo(TextWriter output)
             {
                 output.Write("enum " + Name + " {");
