@@ -34,7 +34,6 @@ namespace SPAGS
             switch (Category)
             {
                 case ValueTypeCategory.Int:
-                    if (name == "char") return new Expression.CharLiteral('\0');
                     return new Expression.IntegerLiteral(0);
                 case ValueTypeCategory.Float:
                     return new Expression.FloatLiteral(0);
