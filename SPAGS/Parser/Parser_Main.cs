@@ -498,13 +498,14 @@ namespace SPAGS
                                 CurrentFunction = function;
 
                                 NameDictionary parameterScope = new NameDictionary();
-                                foreach (ParameterDef pdef in parameters)
+                                for (int i = 0; i < parameters.Count; i++)
                                 {
+                                    ParameterDef pdef = parameters[i];
                                     Parameter param = new Parameter(pdef.Name, pdef.Type);
                                     function.ParameterVariables.Add(param);
+                                    function.Signature.Parameters[i].Name = pdef.Name;
                                     parameterScope.Add(param);
                                 }
-
                                 function.Body = AdvanceBlock(parameterScope);
                                 if (!Exported.ContainsKey(function.Name))
                                 {
