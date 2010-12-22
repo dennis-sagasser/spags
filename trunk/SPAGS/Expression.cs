@@ -90,6 +90,8 @@ namespace SPAGS
             }
             public override ValueType GetValueType()
             {
+                if (Value == (int)(char)Value) return ValueType.Char;
+                if (Value == (int)(short)Value) return ValueType.Short;
                 return ValueType.Int;
             }
             public override bool TryGetIntValue(out int value)
@@ -705,8 +707,14 @@ namespace SPAGS
             {
                 switch (Token.Type)
                 {
-                    case TokenType.LogicalNot: return ValueType.Int;
-                    case TokenType.Subtract: return Operand.GetValueType();
+                    case TokenType.LogicalNot: return ValueType.Char;
+                    case TokenType.Subtract:
+                        {
+                            ValueType opType = Operand.GetValueType();
+                            if (opType.Category == ValueTypeCategory.Float) return ValueType.Float;
+                            if (opType.Name == "char") return ValueType.Short;
+                            return ValueType.Int;
+                        }
                     default: throw new Exception("unhandled operator: " + this);
                 }
             }
@@ -778,26 +786,68 @@ namespace SPAGS
             }
             public override ValueType GetValueType()
             {
+                ValueType leftType = Left.GetValueType();
+                ValueType rightType = Right.GetValueType();
                 switch (Token.Type)
                 {
                     case TokenType.Add:
+                        if (leftType.Category == ValueTypeCategory.Float) return ValueType.Float;
+                        if (leftType.Name == "char" && rightType.Name == "char") return ValueType.Short;
+                        return ValueType.Int;
                     case TokenType.Subtract:
+                        if (leftType.Category == ValueTypeCategory.Float) return ValueType.Float;
+                        if (leftType.Name == "char" && rightType.Name == "char") return ValueType.Short;
+                        return ValueType.Int;
                     case TokenType.Multiply:
+                        if (leftType.Category == ValueTypeCategory.Float) return ValueType.Float;
+                        return ValueType.Int;
                     case TokenType.Divide:
-                    case TokenType.Modulus:
-                        if (Left.GetValueType().Category == ValueTypeCategory.Float
-                            || Right.GetValueType().Category == ValueTypeCategory.Float)
+                        if (leftType.Category == ValueTypeCategory.Float) return ValueType.Float;
+                        if (leftType.Name == "char")
                         {
-                            return ValueType.Float;
+                            if (rightType.Name == "char") return ValueType.Char;
+                            return ValueType.Short;
                         }
+                        if (leftType.Name == "short") return ValueType.Short;
+                        return ValueType.Int;
+                    case TokenType.Modulus:
+                        // result may be negative, so result is never char
+                        if (rightType.Name == "char" || rightType.Name == "short") return ValueType.Short;
                         return ValueType.Int;
 
                         // bitwise
                     case TokenType.BitwiseAnd:
+                        if (leftType.Name == "char" || rightType.Name == "char") return ValueType.Char;
+                        if (leftType.Name == "short" || rightType.Name == "short") return ValueType.Short;
+                        return ValueType.Int;
                     case TokenType.BitwiseLeftShift:
+                        {
+                            int bits;
+                            if (Right.TryGetIntValue(out bits))
+                            {
+                                if (leftType.Name == "char" && bits < 7)
+                                {
+                                    return ValueType.Short;
+                                }
+                            }
+                        }
+                        return ValueType.Int;
                     case TokenType.BitwiseOr:
+                        if (leftType.Name == "int" || rightType.Name == "int") return ValueType.Int;
+                        if (leftType.Name == "short" || rightType.Name == "short") return ValueType.Short;
+                        return ValueType.Char;
                     case TokenType.BitwiseRightShift:
+                        switch (leftType.Name)
+                        {
+                            case "char": return ValueType.Char;
+                            case "short": return ValueType.Short;
+                        }
+                        return ValueType.Int;
                     case TokenType.BitwiseXor:
+                        if (leftType.Name == "int" || rightType.Name == "int") return ValueType.Int;
+                        if (leftType.Name == "short" || rightType.Name == "short") return ValueType.Short;
+                        return ValueType.Char;
+
 
                         // booleans
                     case TokenType.IsEqualTo:
@@ -808,7 +858,7 @@ namespace SPAGS
                     case TokenType.IsNotEqualTo:
                     case TokenType.LogicalAnd:
                     case TokenType.LogicalOr:
-                        return ValueType.Int;
+                        return ValueType.Char;
 
                     default: throw new Exception("unhandled operator: " + this);
                 }
