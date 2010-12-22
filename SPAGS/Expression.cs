@@ -35,7 +35,9 @@ namespace SPAGS
         Field,
 
         AllocStringBuffer,
-        AllocStruct
+        AllocStruct,
+
+        Custom
     }
     public abstract class Expression
     {
