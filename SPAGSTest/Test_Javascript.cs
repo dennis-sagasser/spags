@@ -172,7 +172,40 @@ namespace SPAGS
                 output.WriteLine("  },");
             }
 
-            output.WriteLine("  \"\": null");
+            output.WriteLine("  \"$serialize\": function(slzr) {");
+            /*
+            foreach (Variable var in script.DefinedVariables)
+            {
+                output.WriteLine("  slzr.label(\"" + var.Name + "\");");
+                switch (var.Type.Category)
+                {
+                    case ValueTypeCategory.Int:
+                        if (var.Type.Name == "char")
+                        {
+                            output.Write("  slzr.writeChar(");
+                            WriteScriptOwnerJS(script, output);
+                            output.WriteLine(");");
+                        }
+                        else if (var.Type.Name == "short")
+                        {
+                            output.Write("  slzr.writeShort(");
+                            WriteScriptOwnerJS(script, output);
+                            output.WriteLine(");");
+                        }
+                        else
+                        {
+                            output.Write("  slzr.writeInt(");
+                            WriteScriptOwnerJS(script, output);
+                            output.WriteLine(");");
+                        }
+                    case ValueTypeCategory.Array:
+                        output.Write("    slzr.beginArray(");
+                }
+            }
+            */
+            output.WriteLine("  },");
+            output.WriteLine("  \"$deserialize\": function(dslzr) {");
+            output.WriteLine("  }");
 
             Indented(output, indent, "};");
         }
