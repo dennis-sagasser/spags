@@ -71,7 +71,7 @@ namespace SPAGS
             {
                 VariableData vdata = UserData<Variable, VariableData>.Get(var);
                 if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
-                output.Write("  \"" + vdata.Name + "\": ");
+                output.Write("  " + vdata.Name + ": ");
                 if (var.InitialValue == null)
                 {
                     WriteExpressionJS(var.Type.CreateDefaultValueExpression(), output, indent);
@@ -85,7 +85,9 @@ namespace SPAGS
             foreach (ValueType.Struct structType in script.DefinedStructs)
             {
                 if (structType.IsManaged) continue;
-                output.WriteLine("  \"" + structType.Name + "\": " + UTIL_OBJECT + ".createStruct(function() {");
+                StructData sdata = UserData<ValueType.Struct, StructData>.Get(structType);
+                if (usedWords.ContainsKey(sdata.Name)) sdata.Name = "s$" + sdata.Name;
+                output.WriteLine("  \"" + sdata.Name + "\": " + UTIL_OBJECT + ".createStruct(function() {");
                 foreach (StructMember.Field field in structType.Members.EachOf<StructMember.Field>())
                 {
                     switch (field.Type.Category)
@@ -142,7 +144,10 @@ namespace SPAGS
             foreach (Function func in script.DefinedFunctions)
             {
                 currentFunction = func;
-                output.Write("  \"" + func.Name.Replace("::",DOUBLE_COLON_REPLACE) + "\": function(");
+                FunctionData fdata = UserData<Function, FunctionData>.Get(func);
+                fdata.Name = fdata.Name.Replace("::", DOUBLE_COLON_REPLACE);
+                if (usedWords.ContainsKey(fdata.Name)) fdata.Name = "f$" + fdata.Name;
+                output.Write("  \"" + fdata.Name + "\": function(");
                 for (int i = 0; i < func.ParameterVariables.Count; i++)
                 {
                     if (i != 0) output.Write(", ");
