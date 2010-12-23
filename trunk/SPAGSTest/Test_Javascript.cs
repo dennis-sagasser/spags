@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using AGS.Types;
+using SPAGS.Util;
 
 namespace SPAGS
 {
@@ -10,6 +11,10 @@ namespace SPAGS
     {
         void WriteJavascripts(ScriptCollection scripts, TextWriter output)
         {
+            usedWords = new Dictionary<string,bool>();
+            foreach (string word in YieldJavascriptKeywords()) usedWords.Add(word, true);
+           usedWords.Add(EXTRAS_OBJECT, true);
+            usedWords.Add(UTIL_OBJECT, true);
             foreach (Script header in scripts.Headers)
             {
                 WriteJavascript(header, output, 0, true);
@@ -35,6 +40,7 @@ namespace SPAGS
 
         Script currentScript;
         Function currentFunction;
+        Dictionary<string, bool> usedWords;
 
         void WriteJavascript(Script script, TextWriter output, int indent, bool header)
         {
@@ -63,7 +69,9 @@ namespace SPAGS
              */
             foreach (Variable var in script.DefinedVariables)
             {
-                output.Write("  \"" + var.Name + "\": ");
+                VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
+                output.Write("  \"" + vdata.Name + "\": ");
                 if (var.InitialValue == null)
                 {
                     WriteExpressionJS(var.Type.CreateDefaultValueExpression(), output, indent);
@@ -77,7 +85,7 @@ namespace SPAGS
             foreach (ValueType.Struct structType in script.DefinedStructs)
             {
                 if (structType.IsManaged) continue;
-                output.WriteLine("  \"" + structType.Name + "\": util.createStruct(function() {");
+                output.WriteLine("  \"" + structType.Name + "\": " + UTIL_OBJECT + ".createStruct(function() {");
                 foreach (StructMember.Field field in structType.Members.EachOf<StructMember.Field>())
                 {
                     switch (field.Type.Category)
@@ -89,10 +97,10 @@ namespace SPAGS
                             {
                                 case ValueTypeCategory.Float:
                                 case ValueTypeCategory.Int:
-                                    output.Write("util.arrayZeroes(");
+                                    output.Write(UTIL_OBJECT + ".arrayZeroes(");
                                     break;
                                 default:
-                                    output.Write("util.arrayNulls(");
+                                    output.Write(UTIL_OBJECT + ".arrayNulls(");
                                     break;
                             }
                             WriteExpressionJS(arrayType.LengthExpression, output, indent);
@@ -135,10 +143,13 @@ namespace SPAGS
             {
                 currentFunction = func;
                 output.Write("  \"" + func.Name.Replace("::","$") + "\": function(");
-                for (int i = 0; i < func.Signature.Parameters.Count; i++)
+                for (int i = 0; i < func.ParameterVariables.Count; i++)
                 {
                     if (i != 0) output.Write(", ");
-                    output.Write(func.Signature.Parameters[i].Name);
+                    Variable paramVar = func.ParameterVariables[i];
+                    VariableData vdef = UserData<Variable,VariableData>.Get(paramVar);
+                    if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
+                    output.Write(vdef.Name);
                 }
                 output.WriteLine(") {");
                 foreach (Statement stmt in func.Body.ChildStatements)
@@ -423,7 +434,9 @@ namespace SPAGS
                     {
                         if (i > 0) output.Write(", ");
                         Variable var = varDef.Variables[i];
-                        output.Write(var.Name + " = ");
+                        VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                        if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
+                        output.Write(vdata.Name + " = ");
                         if (var.InitialValue == null)
                         {
                             WriteExpressionJS(var.Type.CreateDefaultValueExpression(), output, indent+1);
@@ -446,6 +459,7 @@ namespace SPAGS
         }
 
         const string EXTRAS_OBJECT = "engine";
+        const string UTIL_OBJECT = "util";
 
         void WriteScriptOwnerJS(Script script, TextWriter output)
         {
@@ -517,7 +531,7 @@ namespace SPAGS
                     {
                         case ValueTypeCategory.Float:
                         case ValueTypeCategory.Int:
-                            output.Write("util.arrayZeroes(");
+                            output.Write(UTIL_OBJECT + ".arrayZeroes(");
                             break;
                         case ValueTypeCategory.Struct:
                             ValueType.Struct structType = (ValueType.Struct)allocArray.ElementType;
@@ -526,7 +540,7 @@ namespace SPAGS
                             output.Write("." + structType.Name + ".createArray(");
                             break;
                         default:
-                            output.Write("util.arrayNulls(");
+                            output.Write(UTIL_OBJECT + ".arrayNulls(");
                             break;
                     }
                     WriteExpressionJS(allocArray.Length, output, indent + 2);
@@ -674,7 +688,7 @@ namespace SPAGS
                     WriteUnaryOperatorJS((Expression.UnaryOperator)expr, output, indent);
                     break;
                 case ExpressionType.AllocStringBuffer:
-                    output.Write("new util.StringBuffer()");
+                    output.Write("new " + UTIL_OBJECT + ".StringBuffer()");
                     break;
                 case ExpressionType.AllocStruct:
                     Expression.AllocateStruct newStruct = (Expression.AllocateStruct)expr;
@@ -685,14 +699,15 @@ namespace SPAGS
                 case ExpressionType.Variable:
                     Expression.Variable var = (Expression.Variable)expr;
                     Variable v = var.TheVariable;
+                    VariableData vdata = UserData<Variable, VariableData>.Get(v);
                     if (v is ScriptVariable)
                     {
                         WriteScriptOwnerJS(v.OwnerScript, output);
-                        output.Write("." + var.TheVariable.Name);
+                        output.Write("." + vdata.Name);
                     }
                     else
                     {
-                        output.Write(var.TheVariable.Name);
+                        output.Write(vdata.Name);
                     }
                     break;
                 default:
@@ -841,6 +856,69 @@ namespace SPAGS
             }
 
             return true;
+        }
+        IEnumerable<string> YieldJavascriptKeywords()
+        {
+            // http://bclary.com/2004/11/07/#a-7.5.2
+
+            // reserved words
+            yield return "break";
+            yield return "else";
+            yield return "new";
+            yield return "var";
+            yield return "case";
+            yield return "finally";
+            yield return "return";
+            yield return "void";
+            yield return "catch";
+            yield return "for";
+            yield return "switch";
+            yield return "while";
+            yield return "continue";
+            yield return "function";
+            yield return "this";
+            yield return "with";
+            yield return "default";
+            yield return "if";
+            yield return "throw";
+            yield return "delete";
+            yield return "in";
+            yield return "try";
+            yield return "do";
+            yield return "instanceof";
+            yield return "typeof";
+            // future reserved words
+            yield return "abstract";
+            yield return "enum";
+            yield return "int";
+            yield return "short";
+            yield return "boolean";
+            yield return "export";
+            yield return "interface";
+            yield return "static";
+            yield return "byte";
+            yield return "extends";
+            yield return "long";
+            yield return "super";
+            yield return "char";
+            yield return "final";
+            yield return "native";
+            yield return "synchronized";
+            yield return "class";
+            yield return "float";
+            yield return "package";
+            yield return "throws";
+            yield return "const";
+            yield return "goto";
+            yield return "private";
+            yield return "transient";
+            yield return "debugger";
+            yield return "implements";
+            yield return "protected";
+            yield return "volatile";
+            yield return "double";
+            yield return "import";
+            yield return "public";
         }
     }
 }

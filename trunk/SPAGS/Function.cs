@@ -6,7 +6,7 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
-    public class Function : INameHolder
+    public class Function : INameHolder, IUserDataHolder
     {
         public NameHolderType NameHolderType { get { return NameHolderType.Function; } }
         public Function(string name, ValueType.FunctionSignature signature)
@@ -25,7 +25,12 @@ namespace SPAGS
             : this(name, new ValueType.FunctionSignature(returnType, parameters))
         {
         }
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public Script OwnerScript;
         private readonly string name;
         public string Name { get { return name; } }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using SPAGS.Util;
 using ActualStructType = SPAGS.ValueType.Struct;
 using ActualVariable = SPAGS.Variable;
 using ActualEnumValue = SPAGS.EnumValue;
@@ -39,14 +40,19 @@ namespace SPAGS
 
         Custom
     }
-    public abstract class Expression
+    public abstract class Expression : IUserDataHolder
     {
         protected Expression(ExpressionType type)
         {
             Type = type;
         }
         public readonly ExpressionType Type;
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public abstract bool IsConstant();
         public virtual bool TryGetIntValue(out int value) { value = 0; return false; }
         public virtual bool TryGetFloatValue(out double value) { value = 0; return false; }

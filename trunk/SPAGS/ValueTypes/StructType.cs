@@ -71,13 +71,18 @@ namespace SPAGS
         }
     }
 
-    public abstract class StructMember : INameHolder
+    public abstract class StructMember : INameHolder, IUserDataHolder
     {
         protected StructMember(string name)
         {
             this.name = name;
         }
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public abstract StructMemberType MemberType { get; }
         public NameHolderType NameHolderType { get { return NameHolderType.StructMember; } }
         private string name;

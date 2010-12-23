@@ -6,7 +6,7 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
-    public class Variable : INameHolder
+    public class Variable : INameHolder, IUserDataHolder
     {
         public Variable(string name, ValueType type, Expression initialValue)
         {
@@ -14,7 +14,12 @@ namespace SPAGS
             Type = type;
             InitialValue = initialValue;
         }
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public Script OwnerScript;
         public readonly ValueType Type;
         private readonly string name;

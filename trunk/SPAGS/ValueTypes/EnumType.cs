@@ -51,7 +51,7 @@ namespace SPAGS
             }
         }
     }
-    public class EnumValue : Token, INameHolder
+    public class EnumValue : Token, INameHolder, IUserDataHolder
     {
         internal EnumValue(ValueType.Enum ownerType, string name, Expression explicitValue, EnumValue previous)
             : base(TokenType.EnumValue)
@@ -61,7 +61,12 @@ namespace SPAGS
             Previous = previous;
             ExplicitValue = explicitValue;
         }
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public readonly ValueType.Enum OwnerType;
         public NameHolderType NameHolderType { get { return NameHolderType.EnumValue; } }
         private string name;

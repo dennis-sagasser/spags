@@ -21,7 +21,7 @@ namespace SPAGS
         public Script OwnerScript;
         public bool Undefined;
 
-        public class Expression : Constant
+        public class Expression : Constant, IUserDataHolder
         {
             public Expression(string name, SPAGS.Expression expression)
                 : base(name)
@@ -29,7 +29,12 @@ namespace SPAGS
                 TheExpression = expression;
             }
             public readonly SPAGS.Expression TheExpression;
-            public object UserData;
+            public object UserData
+            {
+                get { return _userdata; }
+                set { _userdata = value; }
+            }
+            private object _userdata;
             public override string ToString()
             {
                 return "#define " + Name + " " + TheExpression;

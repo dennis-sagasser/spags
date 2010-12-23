@@ -9,14 +9,19 @@ namespace SPAGS
     {
         Int, Float, StringValue, StringBuffer, Void, Struct, FunctionSignature, Array, Null
     }
-    public partial class ValueType
+    public partial class ValueType : IUserDataHolder
     {
         protected ValueType(string name, ValueTypeCategory category)
         {
             this.name = name;
             this.Category = category;
         }
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public readonly ValueTypeCategory Category;
         private readonly string name;
         public virtual string Name { get { return name; } }
