@@ -889,6 +889,12 @@ namespace SPAGS
             yield return "do";
             yield return "instanceof";
             yield return "typeof";
+            // named values
+            yield return "true";
+            yield return "false";
+            yield return "null";
+            yield return "undefined";
+            yield return "NaN";
             // future reserved words
             yield return "abstract";
             yield return "enum";
