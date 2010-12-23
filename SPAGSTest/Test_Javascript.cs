@@ -142,7 +142,7 @@ namespace SPAGS
             foreach (Function func in script.DefinedFunctions)
             {
                 currentFunction = func;
-                output.Write("  \"" + func.Name.Replace("::","$") + "\": function(");
+                output.Write("  \"" + func.Name.Replace("::",DOUBLE_COLON_REPLACE) + "\": function(");
                 for (int i = 0; i < func.ParameterVariables.Count; i++)
                 {
                     if (i != 0) output.Write(", ");
@@ -476,8 +476,10 @@ namespace SPAGS
         void WriteFunctionJS(Function function, TextWriter output)
         {
             WriteScriptOwnerJS(function.OwnerScript, output);
-            output.Write("." + function.Name.Replace("::","$"));
+            output.Write("." + function.Name.Replace("::", DOUBLE_COLON_REPLACE));
         }
+
+        const string DOUBLE_COLON_REPLACE = "$$";
 
         void WriteExpressionJS(Expression expr, TextWriter output, int indent)
         {
