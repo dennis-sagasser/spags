@@ -58,6 +58,7 @@
     <Compile Include="Token.cs" />
     <Compile Include="Util\EditorUsageException.cs" />
     <Compile Include="Util\INameHolder.cs" />
+    <Compile Include="Util\IUserDataHolder.cs" />
     <Compile Include="Util\LiteralCache.cs" />
     <Compile Include="ValueTypes\ArrayType.cs" />
     <Compile Include="ValueTypes\EnumType.cs" />

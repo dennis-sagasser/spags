@@ -16,7 +16,7 @@ namespace SPAGS
         Assign,
         VariableDeclaration
     }
-    public abstract class Statement
+    public abstract class Statement : IUserDataHolder
     {
         protected Statement(StatementType type)
         {
@@ -46,7 +46,12 @@ namespace SPAGS
             yield break;
         }
         public readonly StatementType Type;
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();

@@ -5,7 +5,7 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
-    public class Script
+    public class Script : IUserDataHolder
     {
         public Script(string name)
         {
@@ -13,7 +13,12 @@ namespace SPAGS
         }
         public string Name;
         public bool IsHeader;
-        public object UserData;
+        public object UserData
+        {
+            get { return _userdata; }
+            set { _userdata = value; }
+        }
+        private object _userdata;
         public NameDictionary Namespace;
         public List<Function> DefinedFunctions = new List<Function>();
         public List<ScriptVariable> DefinedVariables = new List<ScriptVariable>();
