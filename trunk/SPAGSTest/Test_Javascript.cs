@@ -209,96 +209,64 @@ namespace SPAGS
                             WriteExpressionJS(index.Index, output, indent);
                             output.Write(", ");
                         }
-                        if (assign.AssignType == TokenType.Assign)
-                        {
-                            WriteExpressionJS(assign.Value, output, indent);
-                            output.WriteLine(");");
-                        }
-                        else
-                        {
-                            WriteFunctionJS(attr.TheAttribute.Getter, output);
-                            output.Write("(");
-                            bool values = false;
-                            if (attr.Target != null)
-                            {
-                                values = true;
-                                WriteExpressionJS(attr.Target, output, indent);
-                            }
-                            if (index != null)
-                            {
-                                if (values)
-                                {
-                                    output.Write(", ");
-                                }
-                                WriteExpressionJS(index.Index, output, indent);
-                            }
-                            if (assign.Value == null)
-                            {
-                                switch (assign.AssignType)
-                                {
-                                    case TokenType.Increment:
-                                        output.WriteLine(") + 1);");
-                                        break;
-                                    case TokenType.Decrement:
-                                        output.WriteLine(") - 1);");
-                                        break;
-                                }
-                            }
-                            else
-                            {
-
-                                switch (assign.AssignType)
-                                {
-                                    case TokenType.AddAssign:
-                                        output.Write(") + ");
-                                        break;
-                                    case TokenType.SubtractAssign:
-                                        output.Write(") - ");
-                                        break;
-                                }
-                                WriteExpressionJS(assign.Value, output, indent, attr.TheAttribute.Type);
-                                output.WriteLine(");");
-                            }
-                        }
-                        break;
-                    }
-
-                    if (assign.Value == null)
-                    {
-                        WriteExpressionJS(assign.Target, output, indent + 1);
+                        Expression newValue;
                         switch (assign.AssignType)
                         {
+                            case TokenType.Assign:
+                                newValue = assign.Value;
+                                break;
                             case TokenType.Increment:
-                                output.WriteLine("++;");
+                                newValue = new Expression.BinaryOperator(
+                                    Token.Add, attr, new Expression.IntegerLiteral(1));
                                 break;
                             case TokenType.Decrement:
-                                output.WriteLine("--;");
+                                newValue = new Expression.BinaryOperator(
+                                    Token.Subtract, attr, new Expression.IntegerLiteral(1));
+                                break;
+                            case TokenType.AddAssign:
+                                newValue = new Expression.BinaryOperator(
+                                    Token.Add, attr, assign.Value);
+                                break;
+                            case TokenType.SubtractAssign:
+                                newValue = new Expression.BinaryOperator(
+                                    Token.Subtract, attr, assign.Value);
                                 break;
                             default:
-                                throw new Exception("Unexpected AssignType: " + assign.AssignType);
+                                throw new Exception("unrecognised assign token: " + assign.AssignType.ToString());
                         }
+                        WriteExpressionJS(newValue, output, indent);
+                        output.WriteLine(");");
+                        break;
                     }
                     else
                     {
                         WriteExpressionJS(assign.Target, output, indent + 1);
+                        output.Write(" = ");
+                        Expression newValue;
                         switch (assign.AssignType)
                         {
                             case TokenType.Assign:
-                                output.Write(" = ");
+                                newValue = assign.Value;
+                                break;
+                            case TokenType.Increment:
+                                newValue = new Expression.BinaryOperator(Token.Add, assign.Target, new Expression.IntegerLiteral(1));
+                                break;
+                            case TokenType.Decrement:
+                                newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, new Expression.IntegerLiteral(1));
                                 break;
                             case TokenType.AddAssign:
-                                output.Write(" -= ");
+                                newValue = new Expression.BinaryOperator(Token.Add, assign.Target, assign.Value);
                                 break;
                             case TokenType.SubtractAssign:
-                                output.Write(" += ");
+                                newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, assign.Value);
                                 break;
                             default:
-                                throw new Exception("Unexpected AssignType: " + assign.AssignType);
+                                throw new Exception("unrecognised assign token: " + assign.AssignType.ToString());
                         }
-                        WriteExpressionJS(assign.Value, output, indent + 1, assign.Target.GetValueType());
+                        WriteExpressionJS(newValue, output, indent + 1, assign.Target.GetValueType());
                         output.WriteLine(";");
+                        break;
                     }
-                    break;
                 case StatementType.Block:
                     Statement.Block block = (Statement.Block)stmt;
                     if (block.ChildStatements.Count == 0)
