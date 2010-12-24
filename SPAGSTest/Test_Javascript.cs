@@ -78,7 +78,7 @@ namespace SPAGS
                 }
                 else
                 {
-                    WriteExpressionJS(var.InitialValue, output, indent + 1);
+                    WriteExpressionJS(var.InitialValue, output, indent + 1, var.Type);
                 }
                 output.WriteLine(",");
             }
@@ -449,7 +449,7 @@ namespace SPAGS
                         }
                         else
                         {
-                            WriteExpressionJS(var.InitialValue, output, indent + 1);
+                            WriteExpressionJS(var.InitialValue, output, indent + 1, var.Type);
                         }
                     }
                     output.WriteLine(";");
@@ -512,7 +512,7 @@ namespace SPAGS
                     int value;
                     bool constantValue = expr.TryGetIntValue(out value);
                     if (expectedType.Name == "short" && exprValType.Name == "int"
-                        && !(constantValue && value == ((int)(short)value)))
+                        && !(constantValue && value == (short)value))
                     {
                         if (selfContained) output.Write("(");
                         WriteExpressionJS(expr, output, indent, null, true);
@@ -521,7 +521,7 @@ namespace SPAGS
                         return;
                     }
                     else if (expectedType.Name == "char" && exprValType.Name != "char"
-                        && !(constantValue && value==((int)(char)value)))
+                        && !(constantValue && value == (byte)value))
                     {
                         if (selfContained) output.Write("(");
                         WriteExpressionJS(expr, output, indent, null, true);
