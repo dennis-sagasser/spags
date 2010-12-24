@@ -507,6 +507,15 @@ namespace SPAGS
                     output.Write(".value");
                     return;
                 }
+                if (expectedType.Category == ValueTypeCategory.Struct)
+                {
+                    int v;
+                    if (expr.TryGetIntValue(out v) && v == 0)
+                    {
+                        output.Write("null");
+                        return;
+                    }
+                }
                 if (expectedType.Category == ValueTypeCategory.Int)
                 {
                     int value;
@@ -596,29 +605,60 @@ namespace SPAGS
                     break;
                 case ExpressionType.Call:
                     Expression.Call call = (Expression.Call)expr;
+                    Expression.Method callingMethod = call.CallingOn as Expression.Method;
+                    if (callingMethod != null)
+                    {
+                        if (callingMethod.TheMethod.IsStatic)
+                        {
+                            Expression.Call newCall = new Expression.Call(
+                                new Expression.Function(callingMethod.TheMethod.Function),
+                                call.Parameters);
+                            WriteExpressionJS(newCall, output, indent, expectedType);
+                        }
+                        else
+                        {
+                            List<Expression> parameters = new List<Expression>(call.Parameters);
+                            parameters.Insert(0, callingMethod.Target);
+                            Expression.Call newCall = new Expression.Call(
+                                new Expression.Function(callingMethod.TheMethod.Function),
+                                parameters);
+                            WriteExpressionJS(newCall, output, indent, expectedType);
+                        }
+                        break;
+                    }
                     WriteExpressionJS(call.CallingOn, output, indent + 1);
                     output.Write("(");
-                    Expression.Method callingMethod = call.CallingOn as Expression.Method;
-                    Expression thisObj = (callingMethod == null) ? null : callingMethod.Target;
-                    if (thisObj != null)
-                    {
-                        WriteExpressionJS(thisObj, output, indent + 1);
-                    }
                     ValueType.FunctionSignature signature = call.CallingOn.GetValueType() as ValueType.FunctionSignature;
                     if (signature == null)
                     {
                         throw new Exception("Calling on a non-callable object: " + call.CallingOn.ToString());
                     }
-                    for (int i = 0; i < call.Parameters.Count; i++)
+                    for (int i = 0; i < Math.Max(signature.Parameters.Count, call.Parameters.Count); i++)
                     {
-                        if (i != 0 || thisObj != null) output.Write(", ");
-                        if (i < signature.Parameters.Count)
+                        if (i < call.Parameters.Count)
                         {
-                            WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
+                            if (i != 0) output.Write(", ");
+                            if (i < signature.Parameters.Count)
+                            {
+                                WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
+                            }
+                            else
+                            {
+                                WriteExpressionJS(call.Parameters[i], output, indent + 1);
+                            }
                         }
                         else
                         {
-                            WriteExpressionJS(call.Parameters[i], output, indent + 1);
+                            Expression paramValue = signature.Parameters[i].DefaultValue;
+                            if (paramValue == null)
+                            {
+                                paramValue = signature.Parameters[i].Type.CreateDefaultValueExpression();
+                            }
+                            if (paramValue != null)
+                            {
+                                if (i != 0) output.Write(", ");
+                                WriteExpressionJS(paramValue, output, indent, signature.Parameters[i].Type);
+                            }
                         }
                     }
                     output.Write(")");
