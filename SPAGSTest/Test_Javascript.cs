@@ -542,6 +542,7 @@ namespace SPAGS
             Statement.Assign assign = bodyBlock.ChildStatements[bodyBlock.ChildStatements.Count - 1] as Statement.Assign;
             if (assign == null || !assign.Target.Equals(comparison.Left)) return false;
             modify = assign.SimpleAssignValue();
+            if (UsesScope(modify, bodyBlock.Scope)) return false;
             Statement.Block newBodyBlock = new Statement.Block(bodyBlock.Scope);
             for (int i = 0; i < bodyBlock.ChildStatements.Count - 1; i++)
             {
@@ -549,6 +550,21 @@ namespace SPAGS
             }
             body = newBodyBlock;
             return true;
+        }
+
+        bool UsesScope(Expression expr, NameDictionary scope)
+        {
+            foreach (Expression subexpr in expr.YieldSubExpressions())
+            {
+                if (UsesScope(subexpr, scope)) return true;
+            }
+            Expression.Variable vexpr = expr as Expression.Variable;
+            if (vexpr != null && scope.ContainsKey(vexpr.TheVariable.Name)
+                && scope[vexpr.TheVariable.Name] == vexpr.TheVariable)
+            {
+                return true;
+            }
+            return false;
         }
 
         const string EXTRAS_OBJECT = "engine";
