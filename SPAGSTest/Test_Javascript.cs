@@ -456,12 +456,90 @@ namespace SPAGS
                     break;
                 case StatementType.While:
                     Statement.While loop = (Statement.While)stmt;
-                    output.Write("while (");
-                    WriteExpressionJS(loop.WhileThisIsTrue, output, indent);
-                    output.Write(") ");
-                    WriteStatementJS(loop.KeepDoingThis, output, indent);
+                    Expression ivar, initVal, modify;
+                    Expression.BinaryOperator comparison;
+                    Statement forBody;
+                    if (TryGetForLoop(loop, out ivar, out initVal, out comparison, out modify, out forBody))
+                    {
+                        output.Write("for (");
+                        if (initVal != null)
+                        {
+                            WriteExpressionJS(ivar, output, indent);
+                            output.Write(" = ");
+                            WriteExpressionJS(initVal, output, indent);
+                        }
+                        output.Write("; ");
+                        if (comparison != null)
+                        {
+                            WriteExpressionJS(comparison, output, indent);
+                        }
+                        output.Write("; ");
+                        if (modify != null)
+                        {
+                            WriteExpressionJS(ivar, output, indent);
+                            output.Write(" = ");
+                            WriteExpressionJS(modify, output, indent);
+                        }
+                        output.Write(") ");
+                        if (forBody == null) { output.Write("{ }"); break; }
+                        WriteStatementJS(forBody, output, indent);
+                    }
+                    else
+                    {
+                        output.Write("while (");
+                        WriteExpressionJS(loop.WhileThisIsTrue, output, indent);
+                        output.Write(") ");
+                        WriteStatementJS(loop.KeepDoingThis, output, indent);
+                    }
                     break;
             }
+        }
+
+        bool TryGetForLoop(Statement.While whileLoop,
+            out Expression ivar,
+            out Expression initVal,
+            out Expression.BinaryOperator comparison,
+            out Expression modify,
+            out Statement body)
+        {
+            ivar = null;
+            initVal = null;
+            modify = null;
+            body = null;
+            comparison = whileLoop.WhileThisIsTrue as Expression.BinaryOperator;
+            if (comparison == null) return false;
+            switch (comparison.Token.Type)
+            {
+                case TokenType.IsEqualTo:
+                case TokenType.IsGreaterThan:
+                case TokenType.IsGreaterThanOrEqualTo:
+                case TokenType.IsLessThan:
+                case TokenType.IsLessThanOrEqualTo:
+                case TokenType.IsNotEqualTo:
+                    break;
+                default:
+                    return false;
+            }
+            ivar = comparison.Left;
+            Statement.Block bodyBlock = whileLoop.KeepDoingThis as Statement.Block;
+            if (bodyBlock == null || bodyBlock.ChildStatements.Count == 0) return false;
+            Statement.Assign assign = bodyBlock.ChildStatements[bodyBlock.ChildStatements.Count - 1] as Statement.Assign;
+            if (assign == null || !assign.Target.Equals(comparison.Left)) return false;
+            modify = assign.SimpleAssignValue();
+            if (false /* bodyBlock.ChildStatements.Count == 2 */)
+            {
+                body = bodyBlock.ChildStatements[0];
+            }
+            else
+            {
+                Statement.Block newBodyBlock = new Statement.Block(bodyBlock.Scope);
+                for (int i = 0; i < bodyBlock.ChildStatements.Count - 1; i++)
+                {
+                    newBodyBlock.ChildStatements.Add(bodyBlock.ChildStatements[i]);
+                }
+                body = newBodyBlock;
+            }
+            return true;
         }
 
         const string EXTRAS_OBJECT = "engine";
