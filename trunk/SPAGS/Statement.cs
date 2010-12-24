@@ -236,6 +236,24 @@ namespace SPAGS
             public readonly Expression Target;
             public readonly Expression Value;
             public readonly TokenType AssignType;
+            public Expression SimpleAssignValue()
+            {
+                switch (AssignType)
+                {
+                    case TokenType.Assign:
+                        return Value;
+                    case TokenType.AddAssign:
+                        return new Expression.BinaryOperator(Token.Add, Target, Value);
+                    case TokenType.SubtractAssign:
+                        return new Expression.BinaryOperator(Token.Subtract, Target, Value);
+                    case TokenType.Increment:
+                        return new Expression.BinaryOperator(Token.Add, Target, new Expression.IntegerLiteral(1));
+                    case TokenType.Decrement:
+                        return new Expression.BinaryOperator(Token.Subtract, Target, new Expression.IntegerLiteral(1));
+                    default:
+                        throw new Exception("Unexpected AssignType: " + AssignType.ToString());
+                }
+            }
             public override IEnumerable<Function> YieldFunctions()
             {
                 foreach (Function func in base.YieldFunctions())
