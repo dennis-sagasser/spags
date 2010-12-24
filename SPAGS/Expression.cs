@@ -307,7 +307,7 @@ namespace SPAGS
             public override bool Equals(Expression ex)
             {
                 ArrayIndex index = ex as ArrayIndex;
-                return (index != null) && (index.Index.Equals(this.Index)) && (index.Target.Equals(this.Target));
+                return (index != null) && index.Index.Equals(this.Index) && index.Target.Equals(this.Target);
             }
         }
 
@@ -507,7 +507,7 @@ namespace SPAGS
             public override bool Equals(Expression ex)
             {
                 Field field = ex as Field;
-                return (field != null) && (field.TheField == this.TheField) && (field.Target == this.Target);
+                return (field != null) && (field.TheField == this.TheField) && field.Target.Equals(this.Target);
             }
         }
 

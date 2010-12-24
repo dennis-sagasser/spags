@@ -341,11 +341,6 @@ namespace SPAGS
                                 Indent(output, indent + 2);
                                 WriteStatementJS(switchCases[i], output, indent + 2);
                             }
-                            else if (caseBlock.Scope.Count != 0)
-                            {
-                                output.Write(" ");
-                                WriteStatementJS(switchCases[i], output, indent + 2);
-                            }
                             else
                             {
                                 output.WriteLine();
@@ -968,7 +963,20 @@ namespace SPAGS
         }
         bool StaticValue(Expression expr)
         {
-            return (expr.Type == ExpressionType.Variable);
+            if (expr.IsConstant()) return true;
+            switch(expr.Type)
+            {
+                case ExpressionType.Variable:
+                    return true;
+                case ExpressionType.ArrayIndex:
+                    Expression.ArrayIndex arrayIndex = (Expression.ArrayIndex)expr;
+                    return StaticValue(arrayIndex.Target) && StaticValue(arrayIndex.Index);
+                case ExpressionType.Field:
+                    Expression.Field field = (Expression.Field)expr;
+                    return StaticValue(field.Target);
+                default:
+                    return false;
+            }
         }
         bool TryGetSwitchBlock(Statement.If ifBlock,
             out Expression testExpr, out List<Expression> values,
@@ -998,7 +1006,8 @@ namespace SPAGS
                     break;
                 }
                 binop = ifBlock.IfThisIsTrue as Expression.BinaryOperator;
-                if (binop == null || !binop.Left.Equals(testExpr) || !binop.Right.IsConstant())
+                if (binop == null || binop.Token.Type != TokenType.IsEqualTo
+                    || !binop.Left.Equals(testExpr) || !binop.Right.IsConstant())
                 {
                     return false;
                 }
