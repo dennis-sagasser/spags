@@ -401,12 +401,19 @@ namespace SPAGS
                         output.Write("if (");
                         WriteExpressionJS(conditional.IfThisIsTrue, output, indent);
                         output.Write(") ");
-                        WriteStatementJS(conditional.ThenDoThis, output, indent);
+                        WriteStatementJS(Blockify(conditional.ThenDoThis), output, indent);
                         if (conditional.ElseDoThis != null)
                         {
                             Indent(output, indent);
                             output.Write("else ");
-                            WriteStatementJS(conditional.ElseDoThis, output, indent);
+                            if (conditional.ElseDoThis.Type == StatementType.If)
+                            {
+                                WriteStatementJS(conditional.ElseDoThis, output, indent);
+                            }
+                            else
+                            {
+                                WriteStatementJS(Blockify(conditional.ElseDoThis), output, indent);
+                            }
                         }
                     }
                     break;
@@ -489,10 +496,19 @@ namespace SPAGS
                         output.Write("while (");
                         WriteExpressionJS(loop.WhileThisIsTrue, output, indent);
                         output.Write(") ");
-                        WriteStatementJS(loop.KeepDoingThis, output, indent);
+                        WriteStatementJS(Blockify(loop.KeepDoingThis), output, indent);
                     }
                     break;
             }
+        }
+
+        Statement.Block Blockify(Statement stmt)
+        {
+            if (stmt == null) return null;
+            if (stmt is Statement.Block) return (Statement.Block)stmt;
+            Statement.Block block = new Statement.Block(new NameDictionary());
+            block.ChildStatements.Add(stmt);
+            return block;
         }
 
         bool TryGetForLoop(Statement.While whileLoop,
@@ -526,19 +542,12 @@ namespace SPAGS
             Statement.Assign assign = bodyBlock.ChildStatements[bodyBlock.ChildStatements.Count - 1] as Statement.Assign;
             if (assign == null || !assign.Target.Equals(comparison.Left)) return false;
             modify = assign.SimpleAssignValue();
-            if (false /* bodyBlock.ChildStatements.Count == 2 */)
+            Statement.Block newBodyBlock = new Statement.Block(bodyBlock.Scope);
+            for (int i = 0; i < bodyBlock.ChildStatements.Count - 1; i++)
             {
-                body = bodyBlock.ChildStatements[0];
+                newBodyBlock.ChildStatements.Add(bodyBlock.ChildStatements[i]);
             }
-            else
-            {
-                Statement.Block newBodyBlock = new Statement.Block(bodyBlock.Scope);
-                for (int i = 0; i < bodyBlock.ChildStatements.Count - 1; i++)
-                {
-                    newBodyBlock.ChildStatements.Add(bodyBlock.ChildStatements[i]);
-                }
-                body = newBodyBlock;
-            }
+            body = newBodyBlock;
             return true;
         }
 
