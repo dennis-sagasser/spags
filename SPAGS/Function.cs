@@ -25,6 +25,13 @@ namespace SPAGS
             : this(name, new ValueType.FunctionSignature(returnType, parameters))
         {
         }
+        public IEnumerable<Variable> YieldLocalVariables()
+        {
+            foreach (Variable var in Body.YieldVariables(true))
+            {
+                yield return var;
+            }
+        }
         public object UserData
         {
             get { return _userdata; }

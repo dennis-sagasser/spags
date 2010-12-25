@@ -101,6 +101,55 @@ namespace SPAGS
                 return false;
             }
 
+            public IEnumerable<Statement.Block> YieldChildBlocks()
+            {
+                foreach (Statement stmt in ChildStatements)
+                {
+                    switch (stmt.Type)
+                    {
+                        case StatementType.Block:
+                            yield return (Statement.Block)stmt;
+                            break;
+                        case StatementType.If:
+                            Statement.If conditional = (Statement.If)stmt;
+                            if (conditional.ThenDoThis is Statement.Block)
+                            {
+                                yield return (Statement.Block)conditional.ThenDoThis;
+                            }
+                            if (conditional.ElseDoThis is Statement.Block)
+                            {
+                                yield return (Statement.Block)conditional.ElseDoThis;
+                            }
+                            break;
+                        case StatementType.While:
+                            Statement.While loop = (Statement.While)stmt;
+                            if (loop.KeepDoingThis is Statement.Block)
+                            {
+                                yield return (Statement.Block)loop.KeepDoingThis;
+                            }
+                            break;
+                    }
+                }
+            }
+
+            public IEnumerable<Variable> YieldVariables(bool recursive)
+            {
+                foreach (Variable var in Scope.EachOf<Variable>())
+                {
+                    yield return var;
+                }
+                if (recursive)
+                {
+                    foreach (Statement.Block childBlock in YieldChildBlocks())
+                    {
+                        foreach (Variable childVar in childBlock.YieldVariables(true))
+                        {
+                            yield return childVar;
+                        }
+                    }
+                }
+            }
+
             public override IEnumerable<Expression> YieldExpressions()
             {
                 foreach (Statement child in ChildStatements)
