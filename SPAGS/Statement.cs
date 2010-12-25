@@ -14,7 +14,8 @@ namespace SPAGS
         Return,
         Call,
         Assign,
-        VariableDeclaration
+        VariableDeclaration,
+        Custom
     }
     public abstract class Statement : IUserDataHolder
     {
@@ -27,6 +28,10 @@ namespace SPAGS
             yield break;
         }
         public virtual IEnumerable<Expression> YieldExpressions()
+        {
+            yield break;
+        }
+        public virtual IEnumerable<Statement.Block> YieldChildBlocks()
         {
             yield break;
         }
@@ -101,33 +106,13 @@ namespace SPAGS
                 return false;
             }
 
-            public IEnumerable<Statement.Block> YieldChildBlocks()
+            public override IEnumerable<Statement.Block> YieldChildBlocks()
             {
                 foreach (Statement stmt in ChildStatements)
                 {
-                    switch (stmt.Type)
+                    foreach (Statement.Block childBlock in stmt.YieldChildBlocks())
                     {
-                        case StatementType.Block:
-                            yield return (Statement.Block)stmt;
-                            break;
-                        case StatementType.If:
-                            Statement.If conditional = (Statement.If)stmt;
-                            if (conditional.ThenDoThis is Statement.Block)
-                            {
-                                yield return (Statement.Block)conditional.ThenDoThis;
-                            }
-                            if (conditional.ElseDoThis is Statement.Block)
-                            {
-                                yield return (Statement.Block)conditional.ElseDoThis;
-                            }
-                            break;
-                        case StatementType.While:
-                            Statement.While loop = (Statement.While)stmt;
-                            if (loop.KeepDoingThis is Statement.Block)
-                            {
-                                yield return (Statement.Block)loop.KeepDoingThis;
-                            }
-                            break;
+                        yield return childBlock;
                     }
                 }
             }
@@ -270,6 +255,28 @@ namespace SPAGS
             public override bool Returns()
             {
                 return ThenDoThis.Returns() && (ElseDoThis != null) && ElseDoThis.Returns();
+            }
+            public override IEnumerable<Block> YieldChildBlocks()
+            {
+                if (ThenDoThis is Statement.Block)
+                {
+                    yield return (Statement.Block)ThenDoThis;
+                }
+                foreach (Statement.Block block in ThenDoThis.YieldChildBlocks())
+                {
+                    yield return block;
+                }
+                if (ElseDoThis is Statement.Block)
+                {
+                    yield return (Statement.Block)ElseDoThis;
+                }
+                if (ElseDoThis != null)
+                {
+                    foreach (Statement.Block block in ElseDoThis.YieldChildBlocks())
+                    {
+                        yield return block;
+                    }
+                }
             }
         }
 
@@ -417,6 +424,18 @@ namespace SPAGS
             {
                 yield return KeepDoingThis;
             }
+            public override IEnumerable<Statement.Block> YieldChildBlocks()
+            {
+                if (KeepDoingThis is Statement.Block)
+                {
+                    yield return (Statement.Block)KeepDoingThis;
+                }
+                foreach (Statement.Block block in KeepDoingThis.YieldChildBlocks())
+                {
+                    yield return block;
+                }
+            }
+
         }
     }
 
