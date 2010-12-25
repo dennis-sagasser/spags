@@ -157,6 +157,34 @@ namespace SPAGS
                     output.Write(vdef.Name);
                 }
                 output.WriteLine(") {");
+                NameDictionary tempUsedNames = new NameDictionary();
+                foreach (Variable var in func.YieldLocalVariables())
+                {
+                    if (var is Parameter) continue;
+                    VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                    if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
+                    if (!tempUsedNames.ContainsKey(var.Name)) tempUsedNames.Add(var);
+                }
+                if (tempUsedNames.Count > 0)
+                {
+                    Indent(output, indent + 2);
+                    output.Write("var ");
+                    bool firstValue = true;
+                    foreach (Variable var in tempUsedNames.EachOf<Variable>())
+                    {
+                        if (firstValue)
+                        {
+                            firstValue = false;
+                        }
+                        else
+                        {
+                            output.Write(", ");
+                        }
+                        VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                        output.Write(vdata.Name);
+                    }
+                    output.WriteLine(";");
+                }
                 foreach (Statement stmt in func.Body.ChildStatements)
                 {
                     Indent(output, indent + 2);
@@ -437,13 +465,10 @@ namespace SPAGS
                     break;
                 case StatementType.VariableDeclaration:
                     Statement.VariableDeclaration varDef = (Statement.VariableDeclaration)stmt;
-                    output.Write("var ");
                     for (int i = 0; i < varDef.Variables.Count; i++)
                     {
-                        if (i > 0) output.Write(", ");
                         Variable var = varDef.Variables[i];
                         VariableData vdata = UserData<Variable, VariableData>.Get(var);
-                        if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
                         output.Write(vdata.Name + " = ");
                         if (var.InitialValue == null)
                         {
@@ -453,8 +478,8 @@ namespace SPAGS
                         {
                             WriteExpressionJS(var.InitialValue, output, indent + 1, var.Type);
                         }
+                        output.WriteLine(";");
                     }
-                    output.WriteLine(";");
                     break;
                 case StatementType.While:
                     Statement.While loop = (Statement.While)stmt;
