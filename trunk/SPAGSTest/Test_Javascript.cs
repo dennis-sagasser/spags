@@ -901,8 +901,19 @@ namespace SPAGS
                   && op.GetValueType().IntType == "int32")
                 )
             {
-                output.Write("(");
                 forceInt = true;
+
+                if (op.Token.Type == TokenType.Multiply)
+                {
+                    output.Write("util.imul(");
+                    WriteExpressionJS(op.Left, output, indent);
+                    output.Write(", ");
+                    WriteExpressionJS(op.Right, output, indent);
+                    output.Write(")");
+                    return;
+                }
+
+                output.Write("(");
             }
             WriteExpressionJS(op.Left, output, indent + 1, null, true);
             switch (op.Token.Type)
