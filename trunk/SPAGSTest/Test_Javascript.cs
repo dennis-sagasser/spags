@@ -889,10 +889,6 @@ namespace SPAGS
 
         void WriteBinaryOperatorJS(Expression.BinaryOperator op, TextWriter output, int indent, bool parens)
         {
-            if (parens)
-            {
-                output.Write("(");
-            }
             bool forceInt = false;
             if (
                 (op.Token.Type == TokenType.Divide && op.Right.GetValueType().Category == ValueTypeCategory.Int) 
@@ -913,6 +909,10 @@ namespace SPAGS
                     return;
                 }
 
+                output.Write("(");
+            }
+            if (parens)
+            {
                 output.Write("(");
             }
             WriteExpressionJS(op.Left, output, indent + 1, null, true);
