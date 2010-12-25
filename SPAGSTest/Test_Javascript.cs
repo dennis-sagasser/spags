@@ -479,6 +479,7 @@ namespace SPAGS
                             WriteExpressionJS(var.InitialValue, output, indent + 1, var.Type);
                         }
                         output.WriteLine(";");
+                        if (i < varDef.Variables.Count-1) Indent(output, indent);
                     }
                     break;
                 case StatementType.While:
