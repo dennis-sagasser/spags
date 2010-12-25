@@ -83,6 +83,12 @@ namespace SPAGS
 
         public abstract void WriteTo(TextWriter output, int indent);
 
+        public virtual bool TryGetSimpleCall(out Expression.Call call)
+        {
+            call = null;
+            return false;
+        }
+
         public class Block : Statement
         {
             public Block(NameDictionary initialScope) : base(StatementType.Block)
@@ -292,6 +298,31 @@ namespace SPAGS
             public readonly Expression Target;
             public readonly Expression Value;
             public readonly TokenType AssignType;
+            public override bool TryGetSimpleCall(out Expression.Call call)
+            {
+                Expression.Attribute attr = Target as Expression.Attribute;
+                Expression.ArrayIndex index = Target as Expression.ArrayIndex;
+                if (index != null)
+                {
+                    attr = index.Target as Expression.Attribute;
+                }
+                if (attr == null)
+                {
+                    return base.TryGetSimpleCall(out call);
+                }
+                List<Expression> parameters = new List<Expression>();
+                if (attr.Target != null)
+                {
+                    parameters.Add(attr.Target);
+                }
+                if (index != null)
+                {
+                    parameters.Add(index);
+                }
+                parameters.Add(SimpleAssignValue());
+                call = new Expression.Call(new Expression.Function(attr.TheAttribute.Setter), parameters);
+                return true;
+            }
             public Expression SimpleAssignValue()
             {
                 switch (AssignType)
@@ -395,6 +426,10 @@ namespace SPAGS
             public override void WriteTo(TextWriter output, int indent)
             {
                 CallExpression.WriteTo(output);
+            }
+            public override bool TryGetSimpleCall(out Expression.Call call)
+            {
+                return CallExpression.TryGetSimpleCall(out call);
             }
         }
 
