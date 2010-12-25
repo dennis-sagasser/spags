@@ -244,11 +244,12 @@ namespace SPAGS
                 case StatementType.If:
                     Statement.If conditional = (Statement.If)stmt;
                     Expression(conditional.IfThisIsTrue);
-                    FlatStatement.Suspend thenSuspend = new FlatStatement.Suspend();
+                    FlatStatement.EntryPoint thenPoint = new FlatStatement.EntryPoint();
+                    FlatStatement.Suspend thenSuspend = new FlatStatement.Suspend(thenPoint);
                     FlatStatement.Suspend elseSuspend = new FlatStatement.Suspend();
                     output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenSuspend, elseSuspend));
-                    FlatStatement.EntryPoint thenPoint = new FlatStatement.EntryPoint();
                     output.Add(thenPoint);
+                    Statement(conditional.ThenDoThis);
                     FlatStatement.EntryPoint endPoint = new FlatStatement.EntryPoint();
                     if (conditional.ElseDoThis == null)
                     {
@@ -261,6 +262,7 @@ namespace SPAGS
                         endSuspend.EntryPoint = endPoint;
                         output.Add(endSuspend);
                         FlatStatement.EntryPoint elsePoint = new FlatStatement.EntryPoint();
+                        elseSuspend.EntryPoint = elsePoint;
                         output.Add(elsePoint);
                         Statement(conditional.ElseDoThis);
                         output.Add(endPoint);
@@ -432,6 +434,7 @@ namespace SPAGS
                     break;
                 case ExpressionType.Field:
                     Expression.Field field = (Expression.Field)expr;
+                    Expression(field.Target);
                     if (stackPushStack.Count == 0)
                     {
                         output.Add(
