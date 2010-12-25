@@ -57,6 +57,7 @@ namespace SPAGS
         public virtual bool TryGetIntValue(out int value) { value = 0; return false; }
         public virtual bool TryGetFloatValue(out double value) { value = 0; return false; }
         public virtual bool TryGetStringValue(out string value) { value = null; return false; }
+        public virtual bool TryGetSimpleCall(out Expression.Call call) { call = null; return false; }
         public virtual IEnumerable<Expression> YieldSubExpressions()
         {
             yield break;
@@ -189,6 +190,23 @@ namespace SPAGS
                 yield return CallingOn;
                 foreach (Expression expr in Parameters) yield return expr;
             }
+            public override bool TryGetSimpleCall(out Call call)
+            {
+                if (CallingOn is Function)
+                {
+                    call = this;
+                    return true;
+                }
+                if (CallingOn is Method)
+                {
+                    Method method = (Method)CallingOn;
+                    List<Expression> parameters = new List<Expression>(Parameters);
+                    if (method.Target != null) parameters.Insert(0, method.Target);
+                    call = new Call(new Function(method.TheMethod.Function), parameters);
+                    return true;
+                }
+                throw new Exception("Call on " + CallingOn.Type);
+            }
             public override void WriteTo(TextWriter output)
             {
                 if (ParsingSettings.FullMethodMode && CallingOn.Type == ExpressionType.Method)
@@ -274,6 +292,19 @@ namespace SPAGS
             public override bool IsConstant()
             {
                 return false;
+            }
+            public override bool TryGetSimpleCall(out Call call)
+            {
+                Attribute attr = Target as Attribute;
+                if (attr == null)
+                {
+                    return base.TryGetSimpleCall(out call);
+                }
+                List<Expression> parameters = new List<Expression>();
+                if (attr.Target != null) parameters.Add(attr.Target);
+                parameters.Add(Index);
+                call = new Expression.Call(new Expression.Function(attr.TheAttribute.Getter), parameters);
+                return true;
             }
             public override ValueType GetValueType()
             {
@@ -437,6 +468,17 @@ namespace SPAGS
             public override IEnumerable<ActualFunction> YieldFunctions()
             {
                 yield return TheAttribute.Getter;
+            }
+            public override bool TryGetSimpleCall(out Call call)
+            {
+                if (TheAttribute.IsArray)
+                {
+                    return base.TryGetSimpleCall(out call);
+                }
+                List<Expression> parameters = new List<Expression>();
+                if (Target != null) parameters.Add(Target);
+                call = new Call(new Expression.Function(TheAttribute.Getter), parameters);
+                return true;
             }
             public override void WriteTo(TextWriter output)
             {

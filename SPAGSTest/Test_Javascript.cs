@@ -13,7 +13,7 @@ namespace SPAGS
         {
             usedWords = new Dictionary<string,bool>();
             foreach (string word in YieldJavascriptKeywords()) usedWords.Add(word, true);
-           usedWords.Add(EXTRAS_OBJECT, true);
+            usedWords.Add(EXTRAS_OBJECT, true);
             usedWords.Add(UTIL_OBJECT, true);
             foreach (Script header in scripts.Headers)
             {
@@ -185,18 +185,27 @@ namespace SPAGS
                     }
                     output.WriteLine(";");
                 }
+                if (func.Signature.ReturnType.Category != ValueTypeCategory.Void
+                    && !func.Body.Returns())
+                {
+                    func.Body.ChildStatements.Add(
+                        new Statement.Return(
+                            func.Signature.ReturnType.CreateDefaultValueExpression()));
+                }
+                Flattener flattener = new Flattener(func);
+                flattener.Go();
+                foreach (Statement stmt in flattener.output)
+                {
+                    Indent(output, indent + 2);
+                    WriteStatementJS(stmt, output, indent + 2);
+                }
+                /*
                 foreach (Statement stmt in func.Body.ChildStatements)
                 {
                     Indent(output, indent + 2);
                     WriteStatementJS(stmt, output, indent + 2);
                 }
-                if (func.Signature.ReturnType.Category != ValueTypeCategory.Void
-                    && !func.Body.Returns())
-                {
-                    output.Write("    return ");
-                    WriteExpressionJS(func.Signature.ReturnType.CreateDefaultValueExpression(), output, indent);
-                    output.WriteLine(";");
-                }
+                 */
                 output.WriteLine("  },");
             }
 
@@ -343,6 +352,13 @@ namespace SPAGS
                             WriteStatementJS(child, output, indent + 1);
                         }
                         Indented(output, indent, "}");
+                    }
+                    break;
+                case StatementType.Custom:
+                    if (stmt is FlatStatement)
+                    {
+                        WriteFlatStatementJS((FlatStatement)stmt, output, indent);
+                        break;
                     }
                     break;
                 case StatementType.If:
@@ -523,6 +539,123 @@ namespace SPAGS
             }
         }
 
+        void WriteFlatStatementJS(FlatStatement flat, TextWriter output, int indent)
+        {
+            switch (flat.FlatStatementType)
+            {
+                case FlatStatementType.EntryPoint:
+                    FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)flat;
+                    output.WriteLine("// entry point " + entryPoint.Number + ":");
+                    break;
+                case FlatStatementType.Suspend:
+                    FlatStatement.Suspend suspend = (FlatStatement.Suspend)flat;
+                    if (suspend.EntryPoint == null)
+                    {
+                        output.WriteLine("return -1;");
+                    }
+                    else
+                    {
+                        output.WriteLine("return " + suspend.EntryPoint.Number + ";");
+                    }
+                    break;
+                case FlatStatementType.Push:
+                    FlatStatement.Push push = (FlatStatement.Push)flat;
+                    if (push.Values.Count > 0)
+                    {
+                        output.Write("$ctxt.push(");
+                        for (int i = 0; i < push.Values.Count; i++)
+                        {
+                            if (i != 0) output.Write(", ");
+                            WriteExpressionJS(push.Values[i], output, indent);
+                        }
+                        output.WriteLine(");");
+                    }
+                    break;
+                case FlatStatementType.SetReturnValue:
+                    output.Write("$ctxt.retValue = ");
+                    WriteExpressionJS(((FlatStatement.SetReturnValue)flat).Value, output, indent);
+                    output.WriteLine(";");
+                    break;
+                case FlatStatementType.Begin:
+                    FlatStatement.Begin begin = (FlatStatement.Begin)flat;
+                    output.Write("$ctxt.queue(");
+                    WriteFunctionJS(begin.Function, output);
+                    output.Write(", " + begin.StackParams);
+                    foreach (Expression expr in begin.DirectParams)
+                    {
+                        output.Write(", ");
+                        WriteExpressionJS(expr, output, indent);
+                    }
+                    output.WriteLine(");");
+                    break;
+                case FlatStatementType.StackArrayIndex:
+                    output.WriteLine("$ctxt.index();");
+                    break;
+                case FlatStatementType.Pop:
+                    output.WriteLine("$ctxt.pop();");
+                    break;
+                case FlatStatementType.StackBinOp:
+                    switch (((FlatStatement.StackBinOp)flat).Token.Type)
+                    {
+                        case TokenType.Add:
+                            output.WriteLine("$ctxt.add();");
+                            break;
+                        case TokenType.BitwiseAnd:
+                            output.WriteLine("$ctxt.band();");
+                            break;
+                        case TokenType.BitwiseLeftShift:
+                            output.WriteLine("$ctxt.lshift();");
+                            break;
+                        case TokenType.BitwiseOr:
+                            output.WriteLine("$ctxt.bor();");
+                            break;
+                        case TokenType.BitwiseRightShift:
+                            output.WriteLine("$ctxt.rshift();");
+                            break;
+                        case TokenType.BitwiseXor:
+                            output.WriteLine("$ctxt.bxor();");
+                            break;
+                        case TokenType.Divide:
+                            output.WriteLine("$ctxt.div();");
+                            break;
+                        case TokenType.IsEqualTo:
+                            output.WriteLine("$ctxt.eq();");
+                            break;
+                        case TokenType.IsGreaterThan:
+                            output.WriteLine("$ctxt.gt()");
+                            break;
+                        case TokenType.IsGreaterThanOrEqualTo:
+                            output.WriteLine("$ctxt.gte()");
+                            break;
+                        case TokenType.IsLessThan:
+                            output.WriteLine("$ctxt.lt();");
+                            break;
+                        case TokenType.IsLessThanOrEqualTo:
+                            output.WriteLine("$ctxt.lte();");
+                            break;
+                        case TokenType.IsNotEqualTo:
+                            output.WriteLine("$ctxt.neq();");
+                            break;
+                        case TokenType.LogicalAnd:
+                            output.WriteLine("$ctxt.and();");
+                            break;
+                        case TokenType.LogicalOr:
+                            output.WriteLine("$ctxt.or();");
+                            break;
+                        case TokenType.Modulus:
+                            output.WriteLine("$ctxt.mod();");
+                            break;
+                        case TokenType.Multiply:
+                            output.WriteLine("$ctxt.mul();");
+                            break;
+                        case TokenType.Subtract:
+                            output.WriteLine("$ctxt.sub();");
+                            break;
+                    }
+                    break;
+            }
+        }
+
         Statement.Block Blockify(Statement stmt)
         {
             if (stmt == null) return null;
@@ -666,6 +799,13 @@ namespace SPAGS
             }
             switch (expr.Type)
             {
+                case ExpressionType.Custom:
+                    if (expr is FlatExpression)
+                    {
+                        WriteFlatExpressionJS((FlatExpression)expr, output, indent);
+                        break;
+                    }
+                    break;
                 case ExpressionType.AllocateArray:
                     Expression.AllocateArray allocArray = (Expression.AllocateArray)expr;
                     switch (allocArray.ElementType.Category)
@@ -884,6 +1024,16 @@ namespace SPAGS
                     break;
                 default:
                     Indented(output, indent, expr.ToString());
+                    break;
+            }
+        }
+
+        void WriteFlatExpressionJS(FlatExpression flat, TextWriter output, int indent)
+        {
+            switch (flat.FlatExpressionType)
+            {
+                case FlatExpressionType.StackPop:
+                    output.Write("$ctxt.pop()");
                     break;
             }
         }
