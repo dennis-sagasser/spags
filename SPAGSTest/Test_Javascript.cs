@@ -578,7 +578,14 @@ namespace SPAGS
                     break;
                 case FlatStatementType.Begin:
                     FlatStatement.Begin begin = (FlatStatement.Begin)flat;
-                    output.Write("$ctxt.queue(");
+                    if (begin.IgnoreReturnValue)
+                    {
+                        output.Write("$ctxt.queue(");
+                    }
+                    else
+                    {
+                        output.Write("$ctxt.begin(");
+                    }
                     WriteFunctionJS(begin.Function, output);
                     output.Write(", " + begin.StackParams);
                     foreach (Expression expr in begin.DirectParams)
