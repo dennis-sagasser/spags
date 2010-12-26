@@ -221,10 +221,11 @@ namespace SPAGS
         }
         void Statement(Statement stmt)
         {
-            Expression.Call call;
-            if (stmt.TryGetSimpleCall(out call))
+            Function callFunc;
+            List<Expression> callParams;
+            if (stmt.TryGetSimpleCall(out callFunc, out callParams))
             {
-                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, true);
+                Call(callFunc, callParams, true);
                 return;
             }
             switch (stmt.Type)
@@ -358,10 +359,11 @@ namespace SPAGS
         }
         void Expression(Expression expr, bool isolated)
         {
-            Expression.Call call;
-            if (expr.TryGetSimpleCall(out call))
+            Function callFunc;
+            List<Expression> callParams;
+            if (expr.TryGetSimpleCall(out callFunc, out callParams))
             {
-                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, false);
+                Call(callFunc, callParams, false);
                 return;
             }
             switch (expr.Type)
