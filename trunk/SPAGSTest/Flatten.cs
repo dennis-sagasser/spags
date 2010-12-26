@@ -251,22 +251,20 @@ namespace SPAGS
                     output.Add(thenPoint);
                     Statement(conditional.ThenDoThis);
                     FlatStatement.EntryPoint endPoint = new FlatStatement.EntryPoint();
+                    output.Add(new FlatStatement.Suspend(endPoint));
                     if (conditional.ElseDoThis == null)
                     {
                         elseSuspend.EntryPoint = endPoint;
-                        output.Add(endPoint);
                     }
                     else
                     {
-                        FlatStatement.Suspend endSuspend = new FlatStatement.Suspend();
-                        endSuspend.EntryPoint = endPoint;
-                        output.Add(endSuspend);
                         FlatStatement.EntryPoint elsePoint = new FlatStatement.EntryPoint();
                         elseSuspend.EntryPoint = elsePoint;
                         output.Add(elsePoint);
                         Statement(conditional.ElseDoThis);
-                        output.Add(endPoint);
+                        output.Add(new FlatStatement.Suspend(endPoint));
                     }
+                    output.Add(endPoint);
                     break;
                 case StatementType.Return:
                     Statement.Return ret = (Statement.Return)stmt;
