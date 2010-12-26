@@ -551,11 +551,11 @@ namespace SPAGS
                     FlatStatement.Suspend suspend = (FlatStatement.Suspend)flat;
                     if (suspend.EntryPoint == null)
                     {
-                        output.WriteLine("return -1;");
+                        output.WriteLine("return $ctxt.finish();");
                     }
                     else
                     {
-                        output.WriteLine("return " + suspend.EntryPoint.Number + ";");
+                        output.WriteLine("return $ctxt.resumeFrom(" + suspend.EntryPoint.Number + ");");
                     }
                     break;
                 case FlatStatementType.Push:
@@ -571,10 +571,10 @@ namespace SPAGS
                         output.WriteLine(");");
                     }
                     break;
-                case FlatStatementType.SetReturnValue:
-                    output.Write("$ctxt.retValue = ");
-                    WriteExpressionJS(((FlatStatement.SetReturnValue)flat).Value, output, indent);
-                    output.WriteLine(";");
+                case FlatStatementType.Finish:
+                    output.Write("return $ctxt.finish(");
+                    WriteExpressionJS(((FlatStatement.Finish)flat).Value, output, indent);
+                    output.WriteLine(");");
                     break;
                 case FlatStatementType.Begin:
                     FlatStatement.Begin begin = (FlatStatement.Begin)flat;
