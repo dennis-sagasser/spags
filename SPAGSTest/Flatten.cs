@@ -337,10 +337,25 @@ namespace SPAGS
             {
                 begin.DirectParams.Insert(0, PopExpression());
             }
-            output.Add(begin);
-            FlatStatement.EntryPoint entryPoint = new FlatStatement.EntryPoint();
-            output.Add(new FlatStatement.Suspend(entryPoint));
-            output.Add(entryPoint);
+            if (ignoreReturnValue && output.Count >= 3)
+            {
+                FlatStatement.EntryPoint entryPoint = output[output.Count - 1] as FlatStatement.EntryPoint;
+                FlatStatement.Suspend suspend = output[output.Count - 2] as FlatStatement.Suspend;
+                FlatStatement.Begin previousBegin = output[output.Count - 3] as FlatStatement.Begin;
+                if (entryPoint != null && suspend != null && previousBegin != null
+                    && suspend.EntryPoint == entryPoint && previousBegin.IgnoreReturnValue)
+                {
+                    output.Insert(output.Count - 2, begin);
+                    return;
+                }
+            }
+            else
+            {
+                output.Add(begin);
+                FlatStatement.EntryPoint entryPoint = new FlatStatement.EntryPoint();
+                output.Add(new FlatStatement.Suspend(entryPoint));
+                output.Add(entryPoint);
+            }
         }
         void Expression(Expression expr, bool isolated)
         {
