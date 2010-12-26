@@ -6,7 +6,7 @@ namespace SPAGS
 {
     public enum FlatStatementType
     {
-        EntryPoint, SetReturnValue, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop
+        EntryPoint, Finish, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop
     }
     public abstract class FlatStatement : Statement
     {
@@ -29,12 +29,12 @@ namespace SPAGS
         {
             get;
         }
-        public class SetReturnValue : FlatStatement
+        public class Finish : FlatStatement
         {
             public Expression Value;
             public override FlatStatementType FlatStatementType
             {
-                get { return FlatStatementType.SetReturnValue; }
+                get { return FlatStatementType.Finish; }
             }
         }
         public class Suspend : FlatStatement
@@ -269,14 +269,13 @@ namespace SPAGS
                     break;
                 case StatementType.Return:
                     Statement.Return ret = (Statement.Return)stmt;
+                    FlatStatement.Finish setReturnValue = new FlatStatement.Finish();
                     if (ret.Value != null)
                     {
                         Expression(ret.Value);
-                        FlatStatement.SetReturnValue setReturnValue = new FlatStatement.SetReturnValue();
                         setReturnValue.Value = Pop(ret.Value.GetValueType());
                         output.Add(setReturnValue);
                     }
-                    output.Add(new Statement.Return(new Expression.IntegerLiteral(-1)));
                     break;
                 case StatementType.VariableDeclaration:
                     Statement.VariableDeclaration varDef = (Statement.VariableDeclaration)stmt;
