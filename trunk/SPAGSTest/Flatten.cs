@@ -130,7 +130,7 @@ namespace SPAGS
     }
     public enum FlatExpressionType
     {
-        StackPop
+        StackPop, StackPeek
     }
     public abstract class FlatExpression : Expression
     {
@@ -145,6 +145,30 @@ namespace SPAGS
         public abstract FlatExpressionType FlatExpressionType
         {
             get;
+        }
+        public class StackPeek : FlatExpression
+        {
+            private ValueType valueType;
+            public StackPeek(ValueType valueType)
+            {
+                this.valueType = valueType;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return ex is StackPeek;
+            }
+            public override ValueType GetValueType()
+            {
+                return valueType;
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
+            public override FlatExpressionType FlatExpressionType
+            {
+                get { return FlatExpressionType.StackPeek; }
+            }
         }
         public class StackPop : FlatExpression
         {
@@ -219,6 +243,17 @@ namespace SPAGS
                 stackPushStack.Clear();
             }
         }
+        bool Ending()
+        {
+            if (output.Count == 0) return false;
+            if (output[output.Count - 1] is FlatStatement.Suspend
+                || output[output.Count - 1] is FlatStatement.Finish
+                || output[output.Count - 1] is FlatStatement.EntryPoint)
+            {
+                return true;
+            }
+            return false;
+        }
         void Statement(Statement stmt)
         {
             Function callFunc;
@@ -253,7 +288,10 @@ namespace SPAGS
                     output.Add(thenPoint);
                     Statement(conditional.ThenDoThis);
                     FlatStatement.EntryPoint endPoint = new FlatStatement.EntryPoint();
-                    output.Add(new FlatStatement.Suspend(endPoint));
+                    if (!Ending())
+                    {
+                        output.Add(new FlatStatement.Suspend(endPoint));
+                    }
                     if (conditional.ElseDoThis == null)
                     {
                         elseSuspend.EntryPoint = endPoint;
@@ -264,7 +302,10 @@ namespace SPAGS
                         elseSuspend.EntryPoint = elsePoint;
                         output.Add(elsePoint);
                         Statement(conditional.ElseDoThis);
-                        output.Add(new FlatStatement.Suspend(endPoint));
+                        if (!Ending())
+                        {
+                            output.Add(new FlatStatement.Suspend(endPoint));
+                        }
                     }
                     output.Add(endPoint);
                     break;
@@ -308,7 +349,10 @@ namespace SPAGS
                     output.Add(new Statement.If(Pop(loop.WhileThisIsTrue.GetValueType()), new FlatStatement.Suspend(loopBodyPoint), new FlatStatement.Suspend(endLoopPoint)));
                     output.Add(loopBodyPoint);
                     Statement(loop.KeepDoingThis);
-                    output.Add(new FlatStatement.Suspend(startPoint));
+                    if (!Ending())
+                    {
+                        output.Add(new FlatStatement.Suspend(startPoint));
+                    }
                     output.Add(endLoopPoint);
                     break;
             }
@@ -421,8 +465,52 @@ namespace SPAGS
                     break;
                 case ExpressionType.BinaryOperator:
                     Expression.BinaryOperator binop = (Expression.BinaryOperator)expr;
-                    Expression(binop.Left);
-                    Expression(binop.Right);
+                    if (binop.Token.Type == TokenType.LogicalAnd)
+                    {
+                        Expression(binop.Left);
+                        FlushStackPushStack();
+                        FlatStatement.EntryPoint valueOK = new FlatStatement.EntryPoint();
+                        FlatStatement.EntryPoint changeValue = new FlatStatement.EntryPoint();
+                        output.Add(
+                            new Statement.If(
+                                new FlatExpression.StackPeek(binop.Left.GetValueType()),
+                                new FlatStatement.Suspend(changeValue),
+                                new FlatStatement.Suspend(valueOK)));
+                        output.Add(changeValue);
+                        output.Add(new FlatStatement.Pop());
+                        Expression(binop.Right);
+                        FlushStackPushStack();
+                        if (!Ending())
+                        {
+                            output.Add(new FlatStatement.Suspend(valueOK));
+                        }
+                        output.Add(valueOK);
+                        break;
+                    }
+                    else if (binop.Token.Type == TokenType.LogicalOr)
+                    {
+                        Expression(binop.Left);
+                        FlushStackPushStack();
+                        FlatStatement.EntryPoint valueOK = new FlatStatement.EntryPoint();
+                        FlatStatement.EntryPoint changeValue = new FlatStatement.EntryPoint();
+                        output.Add(
+                            new Statement.If(
+                                new FlatExpression.StackPeek(binop.Left.GetValueType()),
+                                new FlatStatement.Suspend(valueOK),
+                                new FlatStatement.Suspend(changeValue)));
+                        output.Add(changeValue);
+                        output.Add(new FlatStatement.Pop());
+                        Expression(binop.Right);
+                        FlushStackPushStack();
+                        output.Add(new FlatStatement.Suspend(valueOK));
+                        output.Add(valueOK);
+                        break;
+                    }
+                    else
+                    {
+                        Expression(binop.Left);
+                        Expression(binop.Right);
+                    }
                     if (stackPushStack.Count == 0)
                     {
                         output.Add(new FlatStatement.StackBinOp(binop.Token));
