@@ -83,9 +83,10 @@ namespace SPAGS
 
         public abstract void WriteTo(TextWriter output, int indent);
 
-        public virtual bool TryGetSimpleCall(out Expression.Call call)
+        public virtual bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
         {
-            call = null;
+            func = null;
+            parameters = null;
             return false;
         }
 
@@ -298,7 +299,7 @@ namespace SPAGS
             public readonly Expression Target;
             public readonly Expression Value;
             public readonly TokenType AssignType;
-            public override bool TryGetSimpleCall(out Expression.Call call)
+            public override bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
             {
                 Expression.Attribute attr = Target as Expression.Attribute;
                 Expression.ArrayIndex index = Target as Expression.ArrayIndex;
@@ -308,9 +309,9 @@ namespace SPAGS
                 }
                 if (attr == null)
                 {
-                    return base.TryGetSimpleCall(out call);
+                    return base.TryGetSimpleCall(out func, out parameters);
                 }
-                List<Expression> parameters = new List<Expression>();
+                parameters = new List<Expression>();
                 if (attr.Target != null)
                 {
                     parameters.Add(attr.Target);
@@ -320,7 +321,7 @@ namespace SPAGS
                     parameters.Add(index);
                 }
                 parameters.Add(SimpleAssignValue());
-                call = new Expression.Call(new Expression.Function(attr.TheAttribute.Setter), parameters);
+                func = attr.TheAttribute.Setter;
                 return true;
             }
             public Expression SimpleAssignValue()
@@ -427,9 +428,9 @@ namespace SPAGS
             {
                 CallExpression.WriteTo(output);
             }
-            public override bool TryGetSimpleCall(out Expression.Call call)
+            public override bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
             {
-                return CallExpression.TryGetSimpleCall(out call);
+                return CallExpression.TryGetSimpleCall(out func, out parameters);
             }
         }
 
