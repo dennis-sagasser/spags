@@ -1042,6 +1042,9 @@ namespace SPAGS
                 case FlatExpressionType.StackPop:
                     output.Write("$ctxt.pop()");
                     break;
+                case FlatExpressionType.StackPeek:
+                    output.Write("$ctxt.peek()");
+                    break;
             }
         }
 
