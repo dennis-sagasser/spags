@@ -95,8 +95,9 @@ namespace SPAGS
         }
         public class Begin : FlatStatement
         {
-            public Begin()
+            public Begin(bool ignoreReturnValue)
             {
+                IgnoreReturnValue = ignoreReturnValue;
             }
             public Function Function;
             public int StackParams;
@@ -223,7 +224,7 @@ namespace SPAGS
             Expression.Call call;
             if (stmt.TryGetSimpleCall(out call))
             {
-                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, false);
+                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, true);
                 return;
             }
             switch (stmt.Type)
@@ -328,7 +329,7 @@ namespace SPAGS
             {
                 Expression(param);
             }
-            FlatStatement.Begin begin = new FlatStatement.Begin();
+            FlatStatement.Begin begin = new FlatStatement.Begin(ignoreReturnValue);
             begin.Function = func;
             begin.StackParams = parameters.Count - stackPushStack.Count;
             begin.DirectParams = new List<Expression>();
@@ -340,17 +341,13 @@ namespace SPAGS
             FlatStatement.EntryPoint entryPoint = new FlatStatement.EntryPoint();
             output.Add(new FlatStatement.Suspend(entryPoint));
             output.Add(entryPoint);
-            if (!ignoreReturnValue)
-            {
-                output.Add(new FlatStatement.Pop());
-            }
         }
         void Expression(Expression expr, bool isolated)
         {
             Expression.Call call;
             if (expr.TryGetSimpleCall(out call))
             {
-                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, true);
+                Call(((Expression.Function)call.CallingOn).TheFunction, call.Parameters, false);
                 return;
             }
             switch (expr.Type)
