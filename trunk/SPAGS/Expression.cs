@@ -40,7 +40,7 @@ namespace SPAGS
 
         Custom
     }
-    public abstract class Expression : IUserDataHolder
+    public abstract class Expression : CodeUnit, IUserDataHolder
     {
         protected Expression(ExpressionType type)
         {
@@ -57,12 +57,6 @@ namespace SPAGS
         public virtual bool TryGetIntValue(out int value) { value = 0; return false; }
         public virtual bool TryGetFloatValue(out double value) { value = 0; return false; }
         public virtual bool TryGetStringValue(out string value) { value = null; return false; }
-        public virtual bool TryGetSimpleCall(out ActualFunction func, out List<Expression> parameters)
-        {
-            func = null;
-            parameters = null;
-            return false;
-        }
         public virtual IEnumerable<Expression> YieldSubExpressions()
         {
             yield break;
@@ -271,6 +265,14 @@ namespace SPAGS
                 }
                 return true;
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return CallingOn;
+                foreach (Expression arg in Parameters)
+                {
+                    yield return arg;
+                }
+            }
         }
 
         public class ArrayIndex : Expression
@@ -345,6 +347,11 @@ namespace SPAGS
             {
                 ArrayIndex index = ex as ArrayIndex;
                 return (index != null) && index.Index.Equals(this.Index) && index.Target.Equals(this.Target);
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return Target;
+                yield return Index;
             }
         }
 
@@ -453,6 +460,10 @@ namespace SPAGS
             {
                 return (ex is Constant) && (((Constant)ex).TheConstant == this.TheConstant);
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return TheConstant.TheExpression;
+            }
         }
 
         public class Attribute : Expression
@@ -521,6 +532,13 @@ namespace SPAGS
             {
                 return (ex is StructType) && (((StructType)ex).TheStructType == this.TheStructType);
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                if (Target != null)
+                {
+                    yield return Target;
+                }
+            }
         }
 
         public class Field : Expression
@@ -556,6 +574,10 @@ namespace SPAGS
             {
                 Field field = ex as Field;
                 return (field != null) && (field.TheField == this.TheField) && field.Target.Equals(this.Target);
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return Target;
             }
         }
 
@@ -597,6 +619,13 @@ namespace SPAGS
             {
                 Method method = ex as Method;
                 return (method != null) && (method.TheMethod == this.TheMethod) && (method.Target == this.Target);
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                if (Target != null)
+                {
+                    yield return Target;
+                }
             }
         }
 
@@ -816,6 +845,10 @@ namespace SPAGS
                 UnaryOperator unop = ex as UnaryOperator;
                 return (unop != null) && (unop.Token.Type == this.Token.Type) && unop.Operand.Equals(this.Operand);
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return Operand;
+            }
         }
 
         public class BinaryOperator : Expression
@@ -930,6 +963,11 @@ namespace SPAGS
                 return (binop != null) && (binop.Token.Type == this.Token.Type)
                     && binop.Left.Equals(this.Left) && binop.Right.Equals(this.Right);
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return Left;
+                yield return Right;
+            }
         }
         public class AllocateArray : Expression
         {
@@ -964,6 +1002,10 @@ namespace SPAGS
                 AllocateArray allocArray = ex as AllocateArray;
                 return (allocArray != null) && (allocArray.ElementType == this.ElementType)
                     && allocArray.Length.Equals(this.Length);
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return Length;
             }
         }
         public class AllocateStringBuffer : Expression
@@ -1013,6 +1055,11 @@ namespace SPAGS
             {
                 return TheStructType;
             }
+        }
+
+        public override CodeUnitType CodeUnitType
+        {
+            get { return CodeUnitType.Expression; }
         }
     }
     public enum OpPrecedence : int
