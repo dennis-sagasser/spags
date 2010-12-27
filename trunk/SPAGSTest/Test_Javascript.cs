@@ -15,26 +15,32 @@ namespace SPAGS
             foreach (string word in YieldJavascriptKeywords()) usedWords.Add(word, true);
             usedWords.Add(EXTRAS_OBJECT, true);
             usedWords.Add(UTIL_OBJECT, true);
+            List<Script> list = new List<Script>();
             foreach (Script header in scripts.Headers)
             {
-                WriteJavascript(header, output, 0, true);
+                list.Add(header);
             }
             Script globVarsScript = scripts.CompileGlobalVariablesScript(_editor);
             if (globVarsScript != null)
             {
-                WriteJavascript(globVarsScript, output, 0, false);
+                list.Add(globVarsScript);
             }
             foreach (AGS.Types.Script script in _editor.CurrentGame.Scripts)
             {
                 if (!script.IsHeader)
                 {
-                    WriteJavascript(scripts.CompileScript(script.FileName, script.Text), output, 0, false);
+                    list.Add(scripts.CompileScript(script.FileName, script.Text));
                 }
             }
-            WriteJavascript(scripts.CompileDialogScript(_editor), output, 0, false);
+            list.Add(scripts.CompileDialogScript(_editor));
             foreach (IRoom unloadedRoom in _editor.CurrentGame.Rooms)
             {
-                WriteJavascript(scripts.CompileRoomScript(_editor, unloadedRoom.Number), output, 0, false);
+                list.Add(scripts.CompileRoomScript(_editor, unloadedRoom.Number));
+            }
+
+            foreach (Script script in list)
+            {
+                WriteJavascript(script, output, 0);
             }
         }
 
@@ -42,7 +48,7 @@ namespace SPAGS
         Function currentFunction;
         Dictionary<string, bool> usedWords;
 
-        void WriteJavascript(Script script, TextWriter output, int indent, bool header)
+        void WriteJavascript(Script script, TextWriter output, int indent)
         {
             currentScript = script;
             Indented(output, indent, "scripts[\"" + script.Name + "\"] = {");
