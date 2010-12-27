@@ -17,7 +17,7 @@ namespace SPAGS
         VariableDeclaration,
         Custom
     }
-    public abstract class Statement : IUserDataHolder
+    public abstract class Statement : CodeUnit, IUserDataHolder
     {
         protected Statement(StatementType type)
         {
@@ -82,13 +82,6 @@ namespace SPAGS
         }
 
         public abstract void WriteTo(TextWriter output, int indent);
-
-        public virtual bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
-        {
-            func = null;
-            parameters = null;
-            return false;
-        }
 
         public class Block : Statement
         {
@@ -174,6 +167,13 @@ namespace SPAGS
                 WriteIndent(output, indent);
                 output.Write("}");
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                foreach (Statement childStmt in ChildStatements)
+                {
+                    yield return childStmt;
+                }
+            }
         }
 
         public class VariableDeclaration : Statement
@@ -210,6 +210,16 @@ namespace SPAGS
                     }
                 }
                 output.Write(';');
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                foreach (Variable var in Variables)
+                {
+                    if (var.InitialValue != null)
+                    {
+                        yield return var.InitialValue;
+                    }
+                }
             }
         }
 
@@ -285,6 +295,15 @@ namespace SPAGS
                     }
                 }
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return IfThisIsTrue;
+                yield return ThenDoThis;
+                if (ElseDoThis != null)
+                {
+                    yield return ElseDoThis;
+                }
+            }
         }
 
         public class Assign : Statement
@@ -353,7 +372,8 @@ namespace SPAGS
             {
                 if (Target != null) yield return Target;
                 if (Value != null) yield return Value;
-            }            public override void WriteTo(TextWriter output, int indent)
+            }
+            public override void WriteTo(TextWriter output, int indent)
             {
                 Target.WriteTo(output);
                 switch(AssignType)
@@ -376,6 +396,26 @@ namespace SPAGS
                 }
                 Value.WriteTo(output);
                 output.Write(";");
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                Function func;
+                List<Expression> parameters;
+                if (TryGetSimpleCall(out func, out parameters))
+                {
+                    foreach (Expression param in parameters)
+                    {
+                        yield return param;
+                    }
+                }
+                else
+                {
+                    yield return Target;
+                    if (Value != null)
+                    {
+                        yield return Value;
+                    }
+                }
             }
         }
 
@@ -407,6 +447,13 @@ namespace SPAGS
             {
                 return true;
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                if (Value != null)
+                {
+                    yield return Value;
+                }
+            }
         }
 
         public class Call : Statement
@@ -431,6 +478,10 @@ namespace SPAGS
             public override bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
             {
                 return CallExpression.TryGetSimpleCall(out func, out parameters);
+            }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return CallExpression;
             }
         }
 
@@ -471,8 +522,16 @@ namespace SPAGS
                     yield return block;
                 }
             }
+            public override IEnumerable<CodeUnit> YieldChildCodeUnits()
+            {
+                yield return WhileThisIsTrue;
+                yield return KeepDoingThis;
+            }
+        }
 
+        public override CodeUnitType CodeUnitType
+        {
+            get { return CodeUnitType.Statement; }
         }
     }
-
 }

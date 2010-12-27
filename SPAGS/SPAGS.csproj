@@ -45,6 +45,7 @@
     <Compile Include="Constant.cs" />
     <Compile Include="Expression.cs" />
     <Compile Include="Function.cs" />
+    <Compile Include="CodeUnit.cs" />
     <Compile Include="Parser\Parser_Main.cs" />
     <Compile Include="Parser\ParsingExpressions.cs" />
     <Compile Include="Parser\ParsingPreprocessor.cs" />
