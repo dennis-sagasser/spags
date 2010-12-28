@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using SPAGS.Util;
 
 namespace SPAGS
 {
@@ -256,6 +257,13 @@ namespace SPAGS
         }
         void Statement(Statement stmt)
         {
+            CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(stmt);
+            if (!cudata.Blocked)
+            {
+                output.Add(stmt);
+                return;
+            }
+
             Function callFunc;
             List<Expression> callParams;
             if (stmt.TryGetSimpleCall(out callFunc, out callParams))
@@ -403,6 +411,13 @@ namespace SPAGS
         }
         void Expression(Expression expr, bool isolated)
         {
+            CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(expr);
+            if (!cudata.Blocked)
+            {
+                stackPushStack.Push(expr);
+                return;
+            }
+
             Function callFunc;
             List<Expression> callParams;
             if (expr.TryGetSimpleCall(out callFunc, out callParams))
