@@ -648,13 +648,13 @@ namespace SPAGS
                         output.Write(", $ctxt.stack.splice(-" + begin.StackParams + ")");
                         if (begin.DirectParams.Count > 0)
                         {
-                            output.Write(".concat(");
+                            output.Write(".concat([");
                             for (int i = 0; i < begin.DirectParams.Count; i++)
                             {
                                 if (i > 0) output.Write(", ");
                                 WriteExpressionJS(begin.DirectParams[i], output, indent);
                             }
-                            output.Write(")");
+                            output.Write("])");
                         }
                     }
                     else
