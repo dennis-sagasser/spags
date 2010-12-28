@@ -80,6 +80,41 @@ namespace SPAGS
 
         public abstract bool Equals(Expression ex);
 
+        public static Expression LogicalNegation(Expression expr)
+        {
+            int v;
+            switch (expr.Type)
+            {
+                case ExpressionType.UnaryOperator:
+                    Expression.UnaryOperator unop = (Expression.UnaryOperator)expr;
+                    switch (unop.Token.Type)
+                    {
+                        case TokenType.LogicalNot:
+                            return unop.Operand;
+                    }
+                    break;
+                case ExpressionType.BinaryOperator:
+                    Expression.BinaryOperator binop = (Expression.BinaryOperator)expr;
+                    switch (binop.Token.Type)
+                    {
+                        case TokenType.IsEqualTo:
+                            return new Expression.BinaryOperator(Token.IsNotEqualTo, binop.Left, binop.Right);
+                        case TokenType.IsNotEqualTo:
+                            return new Expression.BinaryOperator(Token.IsEqualTo, binop.Left, binop.Right);
+                        case TokenType.IsGreaterThan:
+                            return new Expression.BinaryOperator(Token.IsLessThanOrEqualTo, binop.Left, binop.Right);
+                        case TokenType.IsGreaterThanOrEqualTo:
+                            return new Expression.BinaryOperator(Token.IsLessThan, binop.Left, binop.Right);
+                        case TokenType.IsLessThan:
+                            return new Expression.BinaryOperator(Token.IsGreaterThanOrEqualTo, binop.Left, binop.Right);
+                        case TokenType.IsLessThanOrEqualTo:
+                            return new Expression.BinaryOperator(Token.IsGreaterThan, binop.Left, binop.Right);
+                    }
+                    break;
+            }
+            return new UnaryOperator(Token.LogicalNot, expr);
+        }
+
         public class IntegerLiteral : Expression
         {
             public IntegerLiteral(int value)
