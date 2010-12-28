@@ -514,25 +514,41 @@ namespace SPAGS
                     break;
                 case StatementType.Return:
                     Statement.Return ret = (Statement.Return)stmt;
-                    if (ret.Value == null)
+                    Expression val = ret.Value;
+                    if (val == null)
                     {
                         ValueType returnType = currentFunction.Signature.ReturnType;
                         if (returnType.Category != ValueTypeCategory.Void)
                         {
-                            output.Write("return ");
-                            WriteExpressionJS(returnType.CreateDefaultValueExpression(), output, indent);
-                            output.WriteLine(";");
+                            val = returnType.CreateDefaultValueExpression();
+                        }
+                    }
+                    FunctionData fdata = UserData<Function,FunctionData>.Get(currentFunction);
+                    if (fdata.Blocking)
+                    {
+                        if (val == null)
+                        {
+                            output.WriteLine("return $ctx.finish();");
                         }
                         else
                         {
-                            output.WriteLine("return;");
+                            output.Write("return $ctx.finish(");
+                            WriteExpressionJS(val, output, indent);
+                            output.WriteLine(");");
                         }
                     }
                     else
                     {
-                        output.Write("return ");
-                        WriteExpressionJS(ret.Value, output, indent + 1, currentFunction.Signature.ReturnType);
-                        output.WriteLine(";");
+                        if (val == null)
+                        {
+                            output.WriteLine("return;");
+                        }
+                        else
+                        {
+                            output.Write("return ");
+                            WriteExpressionJS(val, output, indent);
+                            output.WriteLine(";");
+                        }
                     }
                     break;
                 case StatementType.VariableDeclaration:
