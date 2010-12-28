@@ -118,12 +118,16 @@ namespace SPAGS
                         AdvanceToken(TokenType.LeftSquareBracket);
                         Expression length = AdvanceExpression();
                         AdvanceToken(TokenType.RightSquareBracket);
-                        return new Expression.AllocateArray(elementType, length);
+                        Expression.AllocateArray allocArray = new Expression.AllocateArray(elementType, length);
+                        length.ParentCodeUnit = allocArray;
+                        return allocArray;
                     }
 
 
                 case TokenType.LogicalNot:
-                    return new Expression.UnaryOperator(t, RightToLeft_RightSide(OpPrecedence.Prefix));
+                    Expression.UnaryOperator not = new Expression.UnaryOperator(t, RightToLeft_RightSide(OpPrecedence.Prefix));
+                    not.Operand.ParentCodeUnit = not;
+                    return not;
 
                 case TokenType.Subtract:
                     Expression operand = RightToLeft_RightSide(OpPrecedence.Prefix);
@@ -136,7 +140,9 @@ namespace SPAGS
                             Expression.FloatLiteral floatLiteral = (Expression.FloatLiteral)operand;
                             return Token.FloatLiteral.Get(-floatLiteral.Value).Expression;
                     }
-                    return new Expression.UnaryOperator(t, operand);
+                    Expression.UnaryOperator unm = new Expression.UnaryOperator(t, operand);
+                    unm.Operand.ParentCodeUnit = unm;
+                    return unm;
 
                 default:
                     throw new Exception("unexpected token in expression: " + t);
@@ -238,7 +244,13 @@ namespace SPAGS
                             ((Expression.Method)left).TheMethod.Function.AddCalledBy(CurrentFunction);
                             break;
                     }
-                    return new Expression.Call(left, paramValues);
+                    Expression.Call call = new Expression.Call(left, paramValues);
+                    left.ParentCodeUnit = call;
+                    foreach (Expression expr in paramValues)
+                    {
+                        expr.ParentCodeUnit = call;
+                    }
+                    return call;
 
                 case TokenType.DotWord:
                     Token.DotWord dotWord = (Token.DotWord)t;
@@ -296,11 +308,15 @@ namespace SPAGS
                                 }
                                 else
                                 {
-                                    return new Expression.Attribute(asStruct, attr, left);
+                                    Expression.Attribute attrExpr = new Expression.Attribute(asStruct, attr, left);
+                                    left.ParentCodeUnit = attrExpr;
+                                    return attrExpr;
                                 }
                             case StructMemberType.Field:
                                 StructMember.Field field = (StructMember.Field)member;
-                                return new Expression.Field(asStruct, field, left);
+                                Expression.Field fieldExpr = new Expression.Field(asStruct, field, left);
+                                left.ParentCodeUnit = fieldExpr;
+                                return fieldExpr;
                             case StructMemberType.Method:
                                 StructMember.Method method = (StructMember.Method)member;
                                 if (method.IsStatic)
@@ -309,7 +325,9 @@ namespace SPAGS
                                 }
                                 else
                                 {
-                                    return new Expression.Method(asStruct, method, left);
+                                    Expression.Method methodExpr = new Expression.Method(asStruct, method, left);
+                                    left.ParentCodeUnit = methodExpr;
+                                    return methodExpr;
                                 }
                             default:
                                 throw new Exception("internal error - unrecognised struct member: " + member);
@@ -319,45 +337,98 @@ namespace SPAGS
                 case TokenType.LeftSquareBracket:
                     Expression index = AdvanceExpression();
                     AdvanceToken(TokenType.RightSquareBracket);
-                    return new Expression.ArrayIndex(left, index);
+                    Expression.ArrayIndex arrayIndex = new Expression.ArrayIndex(left, index);
+                    left.ParentCodeUnit = arrayIndex;
+                    index.ParentCodeUnit = arrayIndex;
+                    return arrayIndex;
 
                 case TokenType.Multiply:
                 case TokenType.Divide:
                 case TokenType.Modulus:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.MultiplyDivideModulus));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.MultiplyDivideModulus));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.Add:
                 case TokenType.Subtract:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.AddSubtract));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.AddSubtract));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.BitwiseLeftShift:
                 case TokenType.BitwiseRightShift:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseShift));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseShift));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.IsGreaterThan:
                 case TokenType.IsGreaterThanOrEqualTo:
                 case TokenType.IsLessThan:
                 case TokenType.IsLessThanOrEqualTo:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LessGreaterLteGte));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LessGreaterLteGte));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.IsEqualTo:
                 case TokenType.IsNotEqualTo:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.EqualNotEqual));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.EqualNotEqual));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.BitwiseAnd:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseAnd));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseAnd));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.BitwiseXor:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseXor));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseXor));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.BitwiseOr:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseOr));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.BitwiseOr));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.LogicalAnd:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LogicalAnd));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LogicalAnd));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 case TokenType.LogicalOr:
-                    return new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LogicalOr));
+                    {
+                        Expression.BinaryOperator binop = new Expression.BinaryOperator(t, left, LeftToRight_RightSide(OpPrecedence.LogicalOr));
+                        binop.Left.ParentCodeUnit = binop;
+                        binop.Right.ParentCodeUnit = binop;
+                        return binop;
+                    }
 
                 default:
                     throw new Exception("unexpected " + t.ToString());
