@@ -79,15 +79,6 @@ namespace SPAGS
                 }
                 List<Function> calledByList = calledBy[f];
                 List<CodeUnit> callSitesList = callSites[f];
-                output.WriteLine(f.Name);
-                foreach (CodeUnit cunit in callSitesList)
-                {
-                    output.WriteLine("+ " + cunit);
-                }
-                foreach (Function f2 in calledByList)
-                {
-                    output.WriteLine("- Called By: " + f2.Name);
-                }
                 switch (f.Name)
                 {
                     case "ProcessClick":
@@ -105,6 +96,8 @@ namespace SPAGS
                     default:
                         continue;
                 }
+                FunctionData fdata = UserData<Function, FunctionData>.Get(f);
+                fdata.Blocking = true;
                 foreach (CodeUnit callSite in callSitesList)
                 {
                     CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
