@@ -712,18 +712,18 @@ namespace SPAGS
                     FlatStatement.Suspend suspend = (FlatStatement.Suspend)flat;
                     if (suspend.EntryPoint == null)
                     {
-                        output.WriteLine("return $ctxt.finish();");
+                        output.WriteLine("return $ctx.finish();");
                     }
                     else
                     {
-                        output.WriteLine("return $ctxt.resumeFrom(" + suspend.EntryPoint.Number + ");");
+                        output.WriteLine("return $ctx.resumeFrom(" + suspend.EntryPoint.Number + ");");
                     }
                     break;
                 case FlatStatementType.Push:
                     FlatStatement.Push push = (FlatStatement.Push)flat;
                     if (push.Values.Count > 0)
                     {
-                        output.Write("$ctxt.push(");
+                        output.Write("$stk.push(");
                         for (int i = 0; i < push.Values.Count; i++)
                         {
                             if (i != 0) output.Write(", ");
@@ -733,7 +733,7 @@ namespace SPAGS
                     }
                     break;
                 case FlatStatementType.Finish:
-                    output.Write("return $ctxt.finish(");
+                    output.Write("return $ctx.finish(");
                     WriteExpressionJS(((FlatStatement.Finish)flat).Value, output, indent);
                     output.WriteLine(");");
                     break;
@@ -741,16 +741,16 @@ namespace SPAGS
                     FlatStatement.Begin begin = (FlatStatement.Begin)flat;
                     if (begin.IgnoreReturnValue)
                     {
-                        output.Write("$ctxt.queue(");
+                        output.Write("$ctx.queue(");
                     }
                     else
                     {
-                        output.Write("$ctxt.begin(");
+                        output.Write("$ctx.begin(");
                     }
                     WriteFunctionJS(begin.Function, output);
                     if (begin.StackParams > 0)
                     {
-                        output.Write(", $ctxt.stack.splice(-" + begin.StackParams + ")");
+                        output.Write(", $stk.splice(-" + begin.StackParams + ")");
                         if (begin.DirectParams.Count > 0)
                         {
                             output.Write(".concat([");
@@ -775,67 +775,67 @@ namespace SPAGS
                     output.WriteLine(");");
                     break;
                 case FlatStatementType.StackArrayIndex:
-                    output.WriteLine("$ctxt.index();");
+                    output.WriteLine("$ctx.index();");
                     break;
                 case FlatStatementType.Pop:
-                    output.WriteLine("$ctxt.pop();");
+                    output.WriteLine("$stk.pop();");
                     break;
                 case FlatStatementType.StackBinOp:
                     switch (((FlatStatement.StackBinOp)flat).Token.Type)
                     {
                         case TokenType.Add:
-                            output.WriteLine("$ctxt.add();");
+                            output.WriteLine("$ctx.s_add();");
                             break;
                         case TokenType.BitwiseAnd:
-                            output.WriteLine("$ctxt.band();");
+                            output.WriteLine("$ctx.s_band();");
                             break;
                         case TokenType.BitwiseLeftShift:
-                            output.WriteLine("$ctxt.lshift();");
+                            output.WriteLine("$ctx.s_lshift();");
                             break;
                         case TokenType.BitwiseOr:
-                            output.WriteLine("$ctxt.bor();");
+                            output.WriteLine("$ctx.s_bor();");
                             break;
                         case TokenType.BitwiseRightShift:
-                            output.WriteLine("$ctxt.rshift();");
+                            output.WriteLine("$ctx.s_rshift();");
                             break;
                         case TokenType.BitwiseXor:
-                            output.WriteLine("$ctxt.bxor();");
+                            output.WriteLine("$ctx.s_bxor();");
                             break;
                         case TokenType.Divide:
-                            output.WriteLine("$ctxt.div();");
+                            output.WriteLine("$ctx.s_div();");
                             break;
                         case TokenType.IsEqualTo:
-                            output.WriteLine("$ctxt.eq();");
+                            output.WriteLine("$ctx.s_eq();");
                             break;
                         case TokenType.IsGreaterThan:
-                            output.WriteLine("$ctxt.gt()");
+                            output.WriteLine("$ctx.s_gt()");
                             break;
                         case TokenType.IsGreaterThanOrEqualTo:
-                            output.WriteLine("$ctxt.gte()");
+                            output.WriteLine("$ctx.s_gte()");
                             break;
                         case TokenType.IsLessThan:
-                            output.WriteLine("$ctxt.lt();");
+                            output.WriteLine("$ctx.s_lt();");
                             break;
                         case TokenType.IsLessThanOrEqualTo:
-                            output.WriteLine("$ctxt.lte();");
+                            output.WriteLine("$ctx.s_lte();");
                             break;
                         case TokenType.IsNotEqualTo:
-                            output.WriteLine("$ctxt.neq();");
+                            output.WriteLine("$ctx.s_neq();");
                             break;
                         case TokenType.LogicalAnd:
-                            output.WriteLine("$ctxt.and();");
+                            output.WriteLine("$ctx.s_and();");
                             break;
                         case TokenType.LogicalOr:
-                            output.WriteLine("$ctxt.or();");
+                            output.WriteLine("$ctx.s_or();");
                             break;
                         case TokenType.Modulus:
-                            output.WriteLine("$ctxt.mod();");
+                            output.WriteLine("$ctx.s_mod();");
                             break;
                         case TokenType.Multiply:
-                            output.WriteLine("$ctxt.mul();");
+                            output.WriteLine("$ctx.s_mul();");
                             break;
                         case TokenType.Subtract:
-                            output.WriteLine("$ctxt.sub();");
+                            output.WriteLine("$ctx.s_sub();");
                             break;
                     }
                     break;
@@ -1223,10 +1223,10 @@ namespace SPAGS
             switch (flat.FlatExpressionType)
             {
                 case FlatExpressionType.StackPop:
-                    output.Write("$ctxt.pop()");
+                    output.Write("$stk.pop()");
                     break;
                 case FlatExpressionType.StackPeek:
-                    output.Write("$ctxt.peek()");
+                    output.Write("$stk[$stk.length-1]");
                     break;
             }
         }
