@@ -103,6 +103,28 @@ namespace SPAGS
                     CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
                     cudata.MarkAsBlocked();
                 }
+                calledByList = new List<Function>(calledByList);
+                Dictionary<Function,bool> doneFuncs = new Dictionary<Function,bool>();
+                while (calledByList.Count > 0)
+                {
+                    Function f2 = calledByList[0];
+                    calledByList.RemoveAt(0);
+                    if (doneFuncs.ContainsKey(f2)) continue;
+                    doneFuncs[f2] = true;
+                    FunctionData f2data = UserData<Function,FunctionData>.Get(f2);
+                    if (callSites.ContainsKey(f2))
+                    {
+                        foreach (CodeUnit callSite in callSites[f2])
+                        {
+                            CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
+                            cudata.MarkAsBlocked();
+                        }
+                    }
+                    if (calledBy.ContainsKey(f2))
+                    {
+                        calledByList.AddRange(calledBy[f2]);
+                    }
+                }
             }
 
             foreach (Script script in list)
