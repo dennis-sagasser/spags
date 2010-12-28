@@ -5,13 +5,38 @@ using SPAGS.Util;
 
 namespace SPAGS
 {
-    public class ExpressionData : IUserData<Expression>
+    public class CodeUnitData : IUserData<CodeUnit>
     {
-        public void Init(Expression expr)
+        public void Init(CodeUnit codeUnit)
         {
-            TheExpression = expr;
+            _unit = codeUnit;
         }
-        public Expression TheExpression;
+        protected CodeUnit _unit;
+        public CodeUnit TheCodeUnit
+        {
+            get
+            {
+                return _unit;
+            }
+        }
+        protected bool _blocked;
+        public bool Blocked
+        {
+            get
+            {
+                return _blocked;
+            }
+        }
+        public void MarkAsBlocked()
+        {
+            _blocked = true;
+            for (CodeUnit ancestor = _unit.ParentCodeUnit; ancestor != null; ancestor = ancestor.ParentCodeUnit)
+            {
+                CodeUnitData cudata = UserData<CodeUnit,CodeUnitData>.Get(ancestor);
+                if (cudata._blocked) break;
+                cudata._blocked = true;
+            }
+        }
     }
     public class VariableData : IUserData<Variable>
     {
@@ -39,6 +64,21 @@ namespace SPAGS
         {
             get { return _name ?? TheFunction.Name; }
             set { _name = value; }
+        }
+        public bool Blocking
+        {
+            get
+            {
+                if (TheFunction.Body == null)
+                {
+                    return false;
+                }
+                else
+                {
+                    CodeUnitData cudata = UserData<CodeUnit,CodeUnitData>.Get(TheFunction.Body);
+                    return cudata.Blocked;
+                }
+            }
         }
     }
     public class StructData : IUserData<ValueType.Struct>

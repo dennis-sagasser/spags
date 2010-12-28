@@ -38,6 +38,80 @@ namespace SPAGS
                 list.Add(scripts.CompileRoomScript(_editor, unloadedRoom.Number));
             }
 
+            Dictionary<Function,List<CodeUnit>> callSites = new Dictionary<Function,List<CodeUnit>>();
+            Dictionary<Function,List<Function>> calledBy = new Dictionary<Function,List<Function>>();
+            foreach (Script script in list)
+            {
+                foreach (Function func in script.DefinedFunctions)
+                {
+                    foreach (CodeUnit codeUnit in func.Body.YieldChildCodeUnitsRecursive())
+                    {
+                        Function f;
+                        List<Expression> parameters;
+                        if (codeUnit.TryGetSimpleCall(out f, out parameters))
+                        {
+                            List<CodeUnit> callSitesList;
+                            List<Function> calledByList;
+                            if (!callSites.TryGetValue(f, out callSitesList))
+                            {
+                                callSitesList = new List<CodeUnit>();
+                                callSites[f] = callSitesList;
+                            }
+                            if (!calledBy.TryGetValue(f, out calledByList))
+                            {
+                                calledByList = new List<Function>();
+                                calledBy[f] = calledByList;
+                            }
+                            callSitesList.Add(codeUnit);
+                            if (!calledByList.Contains(func))
+                            {
+                                calledByList.Add(func);
+                            }
+                        }
+                    }
+                }
+            }
+            foreach (Function f in calledBy.Keys)
+            {
+                if (f.Body != null)
+                {
+                    continue;
+                }
+                List<Function> calledByList = calledBy[f];
+                List<CodeUnit> callSitesList = callSites[f];
+                output.WriteLine(f.Name);
+                foreach (CodeUnit cunit in callSitesList)
+                {
+                    output.WriteLine("+ " + cunit);
+                }
+                foreach (Function f2 in calledByList)
+                {
+                    output.WriteLine("- Called By: " + f2.Name);
+                }
+                switch (f.Name)
+                {
+                    case "ProcessClick":
+                    case "Character::FaceLocation":
+                    case "Character::Say":
+                    case "Wait":
+                    case "Character::Walk":
+                    case "Character::SayAt":
+                    case "Character::Animate":
+                    case "PlayFlic":
+                    case "Object::Animate":
+                    case "Character::FaceCharacter":
+                    case "Object::RunInteraction":
+                        break;
+                    default:
+                        continue;
+                }
+                foreach (CodeUnit callSite in callSitesList)
+                {
+                    CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
+                    cudata.MarkAsBlocked();
+                }
+            }
+
             foreach (Script script in list)
             {
                 WriteJavascript(script, output, 0);
@@ -52,27 +126,6 @@ namespace SPAGS
         {
             currentScript = script;
             Indented(output, indent, "scripts[\"" + script.Name + "\"] = {");
-            /*
-            foreach (Constant constant in script.DefinedConstants)
-            {
-                if (constant.Undefined) continue;
-                if (constant is Constant.Expression)
-                {
-                    Constant.Expression constantExpr = (Constant.Expression)constant;
-                    output.Write("  \"" + constantExpr.Name + "\": ");
-                    WriteExpressionJS(constantExpr.TheExpression, output, indent + 1);
-                    output.WriteLine(",");
-                }
-            }
-            foreach (ValueType.Enum enumType in script.DefinedEnums)
-            {
-                if (enumType.Name == "bool") continue;
-                foreach (EnumValue enumValue in enumType.Entries)
-                {
-                    Indented(output, indent + 1, "\"" + enumValue.Name + "\": " + enumValue.Value + ",");
-                }
-            }
-             */
             foreach (Variable var in script.DefinedVariables)
             {
                 VariableData vdata = UserData<Variable, VariableData>.Get(var);
@@ -198,20 +251,24 @@ namespace SPAGS
                         new Statement.Return(
                             func.Signature.ReturnType.CreateDefaultValueExpression()));
                 }
-                Flattener flattener = new Flattener(func);
-                flattener.Go();
-                foreach (Statement stmt in flattener.output)
+                if (fdata.Blocking)
                 {
-                    Indent(output, indent + 2);
-                    WriteStatementJS(stmt, output, indent + 2);
+                    Flattener flattener = new Flattener(func);
+                    flattener.Go();
+                    foreach (Statement stmt in flattener.output)
+                    {
+                        Indent(output, indent + 2);
+                        WriteStatementJS(stmt, output, indent + 2);
+                    }
                 }
-                /*
-                foreach (Statement stmt in func.Body.ChildStatements)
+                else
                 {
-                    Indent(output, indent + 2);
-                    WriteStatementJS(stmt, output, indent + 2);
+                    foreach (Statement stmt in func.Body.ChildStatements)
+                    {
+                        Indent(output, indent + 2);
+                        WriteStatementJS(stmt, output, indent + 2);
+                    }
                 }
-                 */
                 output.WriteLine("  },");
             }
 
