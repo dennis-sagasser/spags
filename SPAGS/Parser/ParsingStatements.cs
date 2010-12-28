@@ -27,8 +27,10 @@ namespace SPAGS
                 FunctionContext.RemoveAt(count - 1);
             }
         }
-        private void AddToScope(Variable variable)
+        private void AddToScope(LocalVariable variable)
         {
+            variable.OwnerScope = CurrentBlock;
+            variable.OwnerFunction = CurrentFunction;
             CurrentBlock.Scope.Add(variable);
         }
         private Statement.Block AdvanceBlock()
@@ -227,7 +229,7 @@ namespace SPAGS
                     variableType = valueType;
                     if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                 }
-                Variable newVariable = new Variable(name, variableType, AdvancePossibleAssignment());
+                LocalVariable newVariable = new LocalVariable(name, variableType, AdvancePossibleAssignment());
                 if (newVariable.InitialValue != null)
                 {
                     newVariable.InitialValue.ParentCodeUnit = vars;

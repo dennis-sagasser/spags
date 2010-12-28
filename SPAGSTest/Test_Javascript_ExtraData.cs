@@ -51,6 +51,7 @@ namespace SPAGS
             get { return _name ?? TheVariable.Name; }
             set { _name = value; }
         }
+        public bool Blocked;
     }
     public class FunctionData : IUserData<Function>
     {
