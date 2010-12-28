@@ -43,7 +43,7 @@ namespace SPAGS
             while (token.Type != TokenType.RightCurlyBrace)
             {
                 Statement stmt = AdvanceStatement(true);
-                newBlock.ParentCodeUnit = newBlock;
+                stmt.ParentCodeUnit = newBlock;
                 newBlock.ChildStatements.Add(stmt);
             }
             AdvanceToken(/* TokenType.RightCurlyBrace */);
