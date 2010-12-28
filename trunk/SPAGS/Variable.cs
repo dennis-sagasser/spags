@@ -56,6 +56,15 @@ namespace SPAGS
             }
         }
     }
+    public class LocalVariable : Variable
+    {
+        public LocalVariable(string name, ValueType valueType, Expression initialValue)
+            : base(name, valueType, initialValue)
+        {
+        }
+        public Function OwnerFunction;
+        public Statement.Block OwnerScope;
+    }
     public class Parameter : Variable
     {
         public Parameter(string name, ValueType valueType)

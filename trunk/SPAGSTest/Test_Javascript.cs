@@ -81,17 +81,69 @@ namespace SPAGS
                 List<CodeUnit> callSitesList = callSites[f];
                 switch (f.Name)
                 {
+                    case "Game::InputBox":
+                    case "Display":
+                    case "DisplayAt":
+                    case "DisplayMessage":
+                    case "DisplayMessageAtY":
+                    case "DisplayTopBar":
+                    case "DisplayMessageBar":
                     case "ProcessClick":
-                    case "Character::FaceLocation":
-                    case "Character::Say":
-                    case "Wait":
-                    case "Character::Walk":
-                    case "Character::SayAt":
-                    case "Character::Animate":
+                    case "QuitGame":
+                    case "AbortGame":
+                    case "RestoreGameDialog":
+                    case "SaveGameDialog":
+                    case "RestartGame":
+                    case "InputBox":
+                    case "InventoryScreen":
+                    case "RunObjectInteraction":
+                    case "AnimateObject":
+                    case "AnimateObjectEx":
+                    case "MoveObject":
+                    case "MoveObjectDirect":
+                    case "RunCharacterInteraction":
+                    case "DisplaySpeech":
+                    case "DisplayThought":
+                    case "AnimateCharacter":
+                    case "AnimateCharacterEx":
+                    case "MoveCharacter":
+                    case "MoveCharacterDirect":
+                    case "MoveCharacterPath":
+                    case "MoveCharacterStraight":
+                    case "MoveCharacterToHotspot":
+                    case "MoveCharacterToObject":
+                    case "MoveCharacterBlocking":
+                    case "FaceCharacter":
+                    case "FaceLocation":
+                    case "RunHotspotInteraction":
+                    case "RunRegionInteraction":
+                    case "RunInventoryInteraction":
+                    case "InventoryItem::RunInteraction":
+                    case "FadeIn":
+                    case "FadeOut":
+                    case "ShakeScreen":
                     case "PlayFlic":
+                    case "PlayVideo":
+                    case "Wait":
+                    case "WaitKey":
+                    case "WaitMouseKey":
+                    case "Hotspot::RunInteraction":
+                    case "Region::RunInteraction":
+                    case "Dialog::DisplayOptions":
                     case "Object::Animate":
-                    case "Character::FaceCharacter":
+                    case "Object::Move":
                     case "Object::RunInteraction":
+                    case "Character::Animate":
+                    case "Character::FaceCharacter":
+                    case "Character::FaceLocation":
+                    case "Character::FaceObject":
+                    case "Character::Move":
+                    case "Character::RunInteraction":
+                    case "Character::Say":
+                    case "Character::SayAt":
+                    case "Character::Think":
+                    case "Character::Walk":
+                    case "Character::WalkStraight":
                         break;
                     default:
                         continue;
@@ -235,9 +287,17 @@ namespace SPAGS
                 foreach (Variable var in func.YieldLocalVariables())
                 {
                     if (var is Parameter) continue;
+                    LocalVariable localVar = (LocalVariable)var;
                     VariableData vdata = UserData<Variable, VariableData>.Get(var);
                     if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
-                    if (!tempUsedNames.ContainsKey(var.Name)) tempUsedNames.Add(var);
+                    if (UserData<CodeUnit, CodeUnitData>.Get(localVar.OwnerScope).Blocked)
+                    {
+                        vdata.Blocked = true;
+                    }
+                    else
+                    {
+                        if (!tempUsedNames.ContainsKey(var.Name)) tempUsedNames.Add(var);
+                    }
                 }
                 if (tempUsedNames.Count > 0)
                 {
@@ -579,7 +639,14 @@ namespace SPAGS
                     {
                         Variable var = varDef.Variables[i];
                         VariableData vdata = UserData<Variable, VariableData>.Get(var);
-                        output.Write(vdata.Name + " = ");
+                        if (vdata.Blocked)
+                        {
+                            output.Write("$vars." + vdata.Name + " = ");
+                        }
+                        else
+                        {
+                            output.Write(vdata.Name + " = ");
+                        }
                         if (var.InitialValue == null)
                         {
                             WriteExpressionJS(var.Type.CreateDefaultValueExpression(), output, indent+1);
@@ -1135,6 +1202,10 @@ namespace SPAGS
                     {
                         WriteScriptOwnerJS(v.OwnerScript, output);
                         output.Write("." + vdata.Name);
+                    }
+                    else if (vdata.Blocked)
+                    {
+                        output.Write("$vars." + vdata.Name);
                     }
                     else
                     {
