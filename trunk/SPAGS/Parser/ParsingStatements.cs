@@ -42,7 +42,9 @@ namespace SPAGS
             AdvanceToken(TokenType.LeftCurlyBrace);
             while (token.Type != TokenType.RightCurlyBrace)
             {
-                newBlock.ChildStatements.Add(AdvanceStatement(true));
+                Statement stmt = AdvanceStatement(true);
+                newBlock.ParentCodeUnit = newBlock;
+                newBlock.ChildStatements.Add(stmt);
             }
             AdvanceToken(/* TokenType.RightCurlyBrace */);
             PopScope();
@@ -68,6 +70,7 @@ namespace SPAGS
                         return new Statement.Return(null);
                     }
                     Statement.Return ret = new Statement.Return(AdvanceExpression());
+                    ret.Value.ParentCodeUnit = ret;
                     AdvanceToken(TokenType.Semicolon);
                     return ret;
                 case TokenType.If:
@@ -86,14 +89,24 @@ namespace SPAGS
                     {
                         elseDoThis = null;
                     }
-                    return new Statement.If(ifThisIsTrue, thenDoThis, elseDoThis);
+                    Statement.If conditional = new Statement.If(ifThisIsTrue, thenDoThis, elseDoThis);
+                    ifThisIsTrue.ParentCodeUnit = conditional;
+                    thenDoThis.ParentCodeUnit = conditional;
+                    if (elseDoThis != null)
+                    {
+                        elseDoThis.ParentCodeUnit = conditional;
+                    }
+                    return conditional;
                 case TokenType.While:
                     AdvanceToken(/* TokenType.While */);
                     AdvanceToken(TokenType.LeftParenthesis);
                     Expression whileThisIsTrue = AdvanceExpression();
                     AdvanceToken(TokenType.RightParenthesis);
-                    Statement doThis = AdvanceStatement(false);
-                    return new Statement.While(whileThisIsTrue, doThis);
+                    Statement keepDoingThis = AdvanceStatement(false);
+                    Statement.While loop = new Statement.While(whileThisIsTrue, keepDoingThis);
+                    whileThisIsTrue.ParentCodeUnit = loop;
+                    keepDoingThis.ParentCodeUnit = loop;
+                    return loop;
                 case TokenType.KnownWord:
                     Token.KnownWord knownToken = (Token.KnownWord)token;
                     switch (knownToken.NameHolder.NameHolderType)
@@ -153,8 +166,10 @@ namespace SPAGS
                     {
                         case ExpressionType.Call:
                             AdvanceToken(/* TokenType.Semicolon */);
-                            Expression.Call call = (Expression.Call)left;
-                            return new Statement.Call(call);
+                            Expression.Call callExpr = (Expression.Call)left;
+                            Statement.Call callStmt = new Statement.Call(callExpr);
+                            callExpr.ParentCodeUnit = callStmt;
+                            return callStmt;
                         default:
                             throw new Exception("invalid statement: " + left);
                     }
@@ -166,14 +181,19 @@ namespace SPAGS
                     AdvanceToken();
                     Expression right = AdvanceExpression();
                     AdvanceToken(TokenType.Semicolon);
-                    return new Statement.Assign(left, right, assignToken.Type);
+                    Statement.Assign assign = new Statement.Assign(left, right, assignToken.Type);
+                    left.ParentCodeUnit = assign;
+                    right.ParentCodeUnit = assign;
+                    return assign;
 
                 case TokenType.Increment:
                 case TokenType.Decrement:
                     Token crementToken = token;
                     AdvanceToken();
                     AdvanceToken(TokenType.Semicolon);
-                    return new Statement.Assign(left, null, crementToken.Type);
+                    Statement.Assign crement = new Statement.Assign(left, null, crementToken.Type);
+                    left.ParentCodeUnit = crement;
+                    return crement;
 
                 default:
                     throw new Exception("unexpected " + token);
@@ -208,6 +228,10 @@ namespace SPAGS
                     if (valueType is ValueType.Struct) ((ValueType.Struct)valueType).Instantiated = true;
                 }
                 Variable newVariable = new Variable(name, variableType, AdvancePossibleAssignment());
+                if (newVariable.InitialValue != null)
+                {
+                    newVariable.InitialValue.ParentCodeUnit = vars;
+                }
                 AddToScope(newVariable);
                 vars.Variables.Add(newVariable);
                 if (token.Type == TokenType.Comma)
