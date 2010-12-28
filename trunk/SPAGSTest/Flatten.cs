@@ -108,6 +108,29 @@ namespace SPAGS
             {
                 get { return FlatStatementType.Begin; }
             }
+            public bool NonChangingParams()
+            {
+                if (DirectParams == null) return true;
+                foreach (Expression expr in DirectParams)
+                {
+                    if (!expr.IsConstant())
+                    {
+                        switch(expr.Type)
+                        {
+                            case ExpressionType.Variable:
+                                Expression.Variable varExpr = (Expression.Variable)expr;
+                                if (!(varExpr.TheVariable is ScriptVariable))
+                                {
+                                    break;
+                                }
+                                return false;
+                            default:
+                                return false;
+                        }
+                    }
+                }
+                return true;
+            }
         }
         public class AllocateArray : FlatStatement
         {
@@ -478,6 +501,7 @@ namespace SPAGS
                 FlatStatement.Suspend suspend = output[output.Count - 2] as FlatStatement.Suspend;
                 FlatStatement.Begin previousBegin = output[output.Count - 3] as FlatStatement.Begin;
                 if (prevEntryPoint != null && suspend != null && previousBegin != null
+                    && previousBegin.NonChangingParams()
                     && suspend.EntryPoint == prevEntryPoint && previousBegin.IgnoreReturnValue)
                 {
                     output.Insert(output.Count - 2, begin);
