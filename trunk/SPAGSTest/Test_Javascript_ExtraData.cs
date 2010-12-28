@@ -65,19 +65,18 @@ namespace SPAGS
             get { return _name ?? TheFunction.Name; }
             set { _name = value; }
         }
+        private bool _blocking;
         public bool Blocking
         {
+            set
+            {
+                _blocking = value;
+            }
             get
             {
-                if (TheFunction.Body == null)
-                {
-                    return false;
-                }
-                else
-                {
-                    CodeUnitData cudata = UserData<CodeUnit,CodeUnitData>.Get(TheFunction.Body);
-                    return cudata.Blocked;
-                }
+                if (_blocking) return true;
+                if (TheFunction.Body == null) return false;
+                return UserData<CodeUnit,CodeUnitData>.Get(TheFunction.Body).Blocked;
             }
         }
     }
