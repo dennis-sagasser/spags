@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using SPAGS.Util;
 
 namespace SPAGS
 {
@@ -8,7 +9,7 @@ namespace SPAGS
     {
         Statement, Expression
     }
-    public abstract class CodeUnit
+    public abstract class CodeUnit : IUserDataHolder
     {
         public abstract CodeUnitType CodeUnitType { get; }
         protected CodeUnit _parentCodeUnit;
@@ -37,6 +38,13 @@ namespace SPAGS
             func = null;
             parameters = null;
             return false;
+        }
+
+        protected object _userData;
+        public object UserData
+        {
+            get { return _userData; }
+            set { _userData = value; }
         }
     }
 }
