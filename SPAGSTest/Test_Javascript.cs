@@ -643,11 +643,29 @@ namespace SPAGS
                         output.Write("$ctxt.begin(");
                     }
                     WriteFunctionJS(begin.Function, output);
-                    output.Write(", " + begin.StackParams);
-                    foreach (Expression expr in begin.DirectParams)
+                    if (begin.StackParams > 0)
                     {
-                        output.Write(", ");
-                        WriteExpressionJS(expr, output, indent);
+                        output.Write(", $ctxt.stack.splice(-" + begin.StackParams + ")");
+                        if (begin.DirectParams.Count > 0)
+                        {
+                            output.Write(".concat(");
+                            for (int i = 0; i < begin.DirectParams.Count; i++)
+                            {
+                                if (i > 0) output.Write(", ");
+                                WriteExpressionJS(begin.DirectParams[i], output, indent);
+                            }
+                            output.Write(")");
+                        }
+                    }
+                    else
+                    {
+                        output.Write(", [");
+                        for (int i = 0; i < begin.DirectParams.Count; i++)
+                        {
+                            if (i > 0) output.Write(", ");
+                            WriteExpressionJS(begin.DirectParams[i], output, indent);
+                        }
+                        output.Write("]");
                     }
                     output.WriteLine(");");
                     break;
