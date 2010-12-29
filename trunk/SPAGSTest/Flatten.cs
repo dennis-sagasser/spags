@@ -560,10 +560,11 @@ namespace SPAGS
                     output.Add(new FlatStatement.Suspend(startPoint));
                     output.Add(startPoint);
                     Expression(loop.WhileThisIsTrue);
-                    FlatStatement.EntryPoint loopBodyPoint = new FlatStatement.EntryPoint();
                     FlatStatement.EntryPoint endLoopPoint = new FlatStatement.EntryPoint();
-                    output.Add(new Statement.If(Pop(loop.WhileThisIsTrue.GetValueType()), new FlatStatement.Suspend(loopBodyPoint), new FlatStatement.Suspend(endLoopPoint)));
-                    output.Add(loopBodyPoint);
+                    output.Add(new Statement.If(
+                        SPAGS.Expression.LogicalNegation(Pop(loop.WhileThisIsTrue.GetValueType())),
+                        new FlatStatement.Suspend(endLoopPoint),
+                        null));
                     Statement(loop.KeepDoingThis);
                     if (!Ending())
                     {
