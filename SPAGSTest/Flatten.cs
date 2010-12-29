@@ -7,7 +7,8 @@ namespace SPAGS
 {
     public enum FlatStatementType
     {
-        EntryPoint, Finish, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop
+        EntryPoint, Finish, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop,
+        InitParameters
     }
     public abstract class FlatStatement : Statement
     {
@@ -24,6 +25,13 @@ namespace SPAGS
             public override FlatStatementType FlatStatementType
             {
                 get { return FlatStatementType.EntryPoint; }
+            }
+        }
+        public class InitParameters : FlatStatement
+        {
+            public override FlatStatementType FlatStatementType
+            {
+                get { return FlatStatementType.InitParameters; }
             }
         }
         public abstract FlatStatementType FlatStatementType
@@ -231,6 +239,10 @@ namespace SPAGS
         public void Go()
         {
             output.Add(new FlatStatement.EntryPoint());
+            if (function.ParameterVariables.Count > 0)
+            {
+                output.Add(new FlatStatement.InitParameters());
+            }
             Statement(function.Body);
             Statement prev = null;
             int pointNum = 0;
