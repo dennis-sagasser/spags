@@ -283,8 +283,8 @@ namespace SPAGS
                         vdef.Blocked = true;
                         if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
                         if (i > 0) output.Write(", ");
-                        output.Write("'" + vdef.Name + "'");
-                    }                    
+                        output.Write("\"" + vdef.Name + "\"");
+                    }
                     output.Write("], function(");
                     output.Write("$ctx, $stk, $vars");
                 }
@@ -659,7 +659,7 @@ namespace SPAGS
                         VariableData vdata = UserData<Variable, VariableData>.Get(var);
                         if (vdata.Blocked)
                         {
-                            output.Write("$vars." + vdata.Name + " = ");
+                            output.Write("$vars[\"" + vdata.Name + "\"] = ");
                         }
                         else
                         {
@@ -1236,7 +1236,7 @@ namespace SPAGS
                     }
                     else if (vdata.Blocked)
                     {
-                        output.Write("$vars." + vdata.Name);
+                        output.Write("$vars[\"" + vdata.Name + "\"]");
                     }
                     else
                     {
