@@ -753,7 +753,7 @@ namespace SPAGS
                         }
                         else
                         {
-                            output.WriteLine("return $ctx.nextEntryPoint(" + suspend.EntryPoint.Number + ");");
+                            output.WriteLine("return $ctx.nextEntryPoint(" + suspend.EntryPoint.Redirected.Number + ");");
                         }
                     }
                     break;
