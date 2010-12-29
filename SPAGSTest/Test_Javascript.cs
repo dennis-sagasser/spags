@@ -741,7 +741,20 @@ namespace SPAGS
                     }
                     else
                     {
-                        output.WriteLine("return $ctx.nextEntryPoint(" + suspend.EntryPoint.Number + ");");
+                        FlatStatement.EntryPoint suspendEntryPoint = suspend.EntryPoint.Redirected;
+                        if (suspendEntryPoint.UseFinishValue)
+                        {
+                            output.Write("return $ctx.finish(");
+                            if (suspendEntryPoint.FinishValue != null)
+                            {
+                                WriteExpressionJS(suspendEntryPoint.FinishValue, output, indent);
+                            }
+                            output.WriteLine(");");
+                        }
+                        else
+                        {
+                            output.WriteLine("return $ctx.nextEntryPoint(" + suspend.EntryPoint.Number + ");");
+                        }
                     }
                     break;
                 case FlatStatementType.Push:
