@@ -179,16 +179,22 @@ namespace SPAGS
                 }
             }
 
-            output.WriteLine("(function(){");
+            output.WriteLine();
+            output.WriteLine("if (typeof ags !== \"undefined\")");
+            output.WriteLine("(function(ags){");
+            output.WriteLine("  var engine, util, games, game, scripts;");
+            output.WriteLine("  engine = ags.engine;");
+            output.WriteLine("  util = ags.util;");
+            output.WriteLine("  games = ags.games;");
+            output.WriteLine("  game = games[\"" + guid + "\"];");
+            output.WriteLine("  scripts = game.scripts;");
             Indent(output, 1);
-            output.WriteLine("var scripts = {};");
             foreach (Script script in list)
             {
                 WriteJavascript(script, output, 1);
             }
-            Indent(output, 1);
-            output.WriteLine("ags.games[\"" + guid + "\"].scripts = scripts;");
-            output.WriteLine("})();");
+            output.WriteLine("})(ags);");
+            output.WriteLine();
         }
 
         Script currentScript;
@@ -1265,6 +1271,9 @@ namespace SPAGS
                 case FlatExpressionType.StackPeek:
                     output.Write("$stk[$stk.length-1]");
                     break;
+                case FlatExpressionType.CurrentEntryPoint:
+                    output.Write("$ctx.entryPoint");
+                    break;
             }
         }
 
@@ -1391,6 +1400,17 @@ namespace SPAGS
                 case ExpressionType.Field:
                     Expression.Field field = (Expression.Field)expr;
                     return StaticValue(field.Target);
+                case ExpressionType.Custom:
+                    if (expr is FlatExpression)
+                    {
+                        FlatExpression flat = (FlatExpression)expr;
+                        switch (flat.FlatExpressionType)
+                        {
+                            case FlatExpressionType.CurrentEntryPoint:
+                                return true;
+                        }
+                    }
+                    goto default;
                 default:
                     return false;
             }
