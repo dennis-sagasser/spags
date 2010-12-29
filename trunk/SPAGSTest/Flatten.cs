@@ -179,7 +179,7 @@ namespace SPAGS
     }
     public enum FlatExpressionType
     {
-        StackPop, StackPeek
+        StackPop, StackPeek, CurrentEntryPoint
     }
     public abstract class FlatExpression : Expression
     {
@@ -194,6 +194,25 @@ namespace SPAGS
         public abstract FlatExpressionType FlatExpressionType
         {
             get;
+        }
+        public class CurrentEntryPoint : FlatExpression
+        {
+            public override FlatExpressionType FlatExpressionType
+            {
+                get { return FlatExpressionType.CurrentEntryPoint; }
+            }
+            public override ValueType GetValueType()
+            {
+                return ValueType.Int;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return ex is CurrentEntryPoint;
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
         }
         public class StackPeek : FlatExpression
         {
@@ -316,6 +335,57 @@ namespace SPAGS
                 {
                     ((FlatStatement.EntryPoint)stmt).Number = pointNum++;
                 }
+            }
+            List<Statement> oldOutput = output;
+            output = new List<Statement>();
+            int pos;
+            for (pos = 0; pos < oldOutput.Count; pos++)
+            {
+                if (oldOutput[pos] is FlatStatement.EntryPoint)
+                {
+                    break;
+                }
+                output.Add(oldOutput[pos]);
+            }
+            if (pos >= oldOutput.Count)
+            {
+                return;
+            }
+            Statement.Block firstBlock = new Statement.Block(new NameDictionary());
+            Statement.If entryPointSwitch = new Statement.If(
+                new Expression.BinaryOperator(
+                    Token.IsEqualTo,
+                    new FlatExpression.CurrentEntryPoint(),
+                    new Expression.IntegerLiteral(0)),
+                firstBlock,
+                null);
+            output.Add(entryPointSwitch);
+            Statement.If currentIf = entryPointSwitch;
+            Statement.Block currentBlock = firstBlock;
+            while (++pos < oldOutput.Count)
+            {
+                FlatStatement.EntryPoint currentEntryPoint = oldOutput[pos] as FlatStatement.EntryPoint;
+                if (currentEntryPoint != null)
+                {
+                    currentBlock = new Statement.Block(new NameDictionary());
+                    Statement.If newIf = new Statement.If(
+                        new Expression.BinaryOperator(
+                            Token.IsEqualTo,
+                            new FlatExpression.CurrentEntryPoint(),
+                            new Expression.IntegerLiteral(currentEntryPoint.Number)),
+                        currentBlock,
+                        null);
+                    currentIf.ElseDoThis = newIf;
+                    currentIf = newIf;
+                }
+                else
+                {
+                    currentBlock.ChildStatements.Add(oldOutput[pos]);
+                }
+            }
+            if (entryPointSwitch.ElseDoThis == null)
+            {
+                output = firstBlock.ChildStatements;
             }
         }
         void PushExpression(Expression expr)
