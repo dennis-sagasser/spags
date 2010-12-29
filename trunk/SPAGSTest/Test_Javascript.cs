@@ -787,7 +787,7 @@ namespace SPAGS
                             output.Write("])");
                         }
                     }
-                    else
+                    else if (begin.DirectParams.Count > 0)
                     {
                         output.Write(", [");
                         for (int i = 0; i < begin.DirectParams.Count; i++)

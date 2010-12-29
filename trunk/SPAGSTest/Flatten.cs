@@ -127,11 +127,17 @@ namespace SPAGS
                         {
                             case ExpressionType.Variable:
                                 Expression.Variable varExpr = (Expression.Variable)expr;
-                                if (!(varExpr.TheVariable is ScriptVariable))
+                                if (varExpr.TheVariable is ScriptVariable)
                                 {
-                                    break;
+                                    ScriptVariable scriptVar = (ScriptVariable)varExpr.TheVariable;
+                                    // assume that imported variables do not change in the middle of execution
+                                    // TODO: make sure this assumption is actually true!
+                                    if (scriptVar.OwnerScript != null)
+                                    {
+                                        return false;
+                                    }
                                 }
-                                return false;
+                                break;
                             default:
                                 return false;
                         }
@@ -513,7 +519,7 @@ namespace SPAGS
                 FlatStatement.Suspend suspend = output[output.Count - 2] as FlatStatement.Suspend;
                 FlatStatement.Begin previousBegin = output[output.Count - 3] as FlatStatement.Begin;
                 if (prevEntryPoint != null && suspend != null && previousBegin != null
-                    && previousBegin.NonChangingParams()
+                    && begin.NonChangingParams()
                     && suspend.EntryPoint == prevEntryPoint && previousBegin.IgnoreReturnValue)
                 {
                     output.Insert(output.Count - 2, begin);
