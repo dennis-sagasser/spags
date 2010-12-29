@@ -779,11 +779,11 @@ namespace SPAGS
                     FlatStatement.Begin begin = (FlatStatement.Begin)flat;
                     if (begin.IgnoreReturnValue)
                     {
-                        output.Write("$ctx.queue(");
+                        output.Write("$ctx.queueCall(");
                     }
                     else
                     {
-                        output.Write("$ctx.begin(");
+                        output.Write("$ctx.beginCall(");
                     }
                     WriteFunctionJS(begin.Function, output);
                     if (begin.StackParams > 0)
