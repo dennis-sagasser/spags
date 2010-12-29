@@ -21,7 +21,7 @@ namespace SPAGS
         }
         public class EntryPoint : FlatStatement
         {
-            public int Number;
+            public int Number = 666;
             public override FlatStatementType FlatStatementType
             {
                 get { return FlatStatementType.EntryPoint; }
@@ -56,6 +56,10 @@ namespace SPAGS
             {
                 get { return FlatStatementType.Finish; }
             }
+            public override bool Returns()
+            {
+                return true;
+            }
         }
         public class Suspend : FlatStatement
         {
@@ -70,6 +74,10 @@ namespace SPAGS
             public override FlatStatementType FlatStatementType
             {
                 get { return FlatStatementType.Suspend; }
+            }
+            public override bool Returns()
+            {
+                return true;
             }
         }
         public class StackBinOp : FlatStatement
@@ -264,6 +272,21 @@ namespace SPAGS
             for (int i = output.Count - 1; i >= 0; i--)
             {
                 Statement stmt = output[i];
+                if (stmt is FlatStatement.Suspend)
+                {
+                    FlatStatement.Suspend suspend = (FlatStatement.Suspend)stmt;
+                    while (i > 0 && output[i - 1] is FlatStatement.EntryPoint)
+                    {
+                        i--;
+                        ((FlatStatement.EntryPoint)output[i]).RedirectTo = suspend.EntryPoint;
+                        output.RemoveAt(i + 1);
+                        output.RemoveAt(i);
+                    }
+                }
+            }
+            for (int i = output.Count - 1; i >= 0; i--)
+            {
+                Statement stmt = output[i];
                 if (stmt is FlatStatement.EntryPoint)
                 {
                     FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)stmt;
@@ -297,17 +320,6 @@ namespace SPAGS
                         }
                     }
                 }
-                else if (stmt is FlatStatement.Suspend)
-                {
-                    FlatStatement.Suspend suspend = (FlatStatement.Suspend)stmt;
-                    while (i > 0 && output[i - 1] is FlatStatement.EntryPoint)
-                    {
-                        ((FlatStatement.EntryPoint)output[i - 1]).RedirectTo = suspend.EntryPoint;
-                        output.RemoveAt(i);
-                        output.RemoveAt(i - 1);
-                        i--;
-                    }
-                }
             }
             int pointNum = 0;
             foreach (Statement stmt in output)
@@ -337,13 +349,21 @@ namespace SPAGS
         bool Ending()
         {
             if (output.Count == 0) return false;
-            if (output[output.Count - 1] is FlatStatement.Suspend
-                || output[output.Count - 1] is FlatStatement.Finish
-                || output[output.Count - 1] is FlatStatement.EntryPoint)
+            return output[output.Count-1].Returns();
+        }
+        void MoveUpToEntryPoint(int start, Statement.Block block)
+        {
+            int i = start;
+            while (i < output.Count)
             {
-                return true;
+                Statement stmt = output[i];
+                if (stmt is FlatStatement.EntryPoint)
+                {
+                    return;
+                }
+                output.RemoveAt(i);
+                block.ChildStatements.Add(stmt);
             }
-            return false;
         }
         void Statement(Statement stmt)
         {
@@ -394,46 +414,62 @@ namespace SPAGS
                     {
                         if (elseData != null && elseData.Blocked)
                         {
-                            FlatStatement.EntryPoint thenPoint = new FlatStatement.EntryPoint();
-                            FlatStatement.Suspend thenSuspend = new FlatStatement.Suspend(thenPoint);
-                            FlatStatement.Suspend elseSuspend = new FlatStatement.Suspend();
-                            output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenSuspend, elseSuspend));
-                            output.Add(thenPoint);
+                            int moveStart;
+                            Statement.Block thenBlock = new Statement.Block(new NameDictionary());
+                            Statement.Block elseBlock = new Statement.Block(new NameDictionary());
+                            output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenBlock, elseBlock));
+                            moveStart = output.Count;
                             Statement(conditional.ThenDoThis);
-                            FlatStatement.EntryPoint endPoint = new FlatStatement.EntryPoint();
+                            MoveUpToEntryPoint(moveStart, thenBlock);
+                            FlatStatement.EntryPoint endPoint = null;
                             if (!Ending())
                             {
+                                endPoint = endPoint ?? new FlatStatement.EntryPoint();
                                 output.Add(new FlatStatement.Suspend(endPoint));
                             }
-                            if (conditional.ElseDoThis == null)
+                            moveStart = output.Count;
+                            Statement(conditional.ElseDoThis);
+                            MoveUpToEntryPoint(moveStart, elseBlock);
+                            if (!Ending())
                             {
-                                elseSuspend.EntryPoint = endPoint;
+                                endPoint = endPoint ?? new FlatStatement.EntryPoint();
+                                output.Add(new FlatStatement.Suspend(endPoint));
                             }
-                            else
+                            if (endPoint != null)
                             {
-                                FlatStatement.EntryPoint elsePoint = new FlatStatement.EntryPoint();
-                                elseSuspend.EntryPoint = elsePoint;
-                                output.Add(elsePoint);
-                                Statement(conditional.ElseDoThis);
-                                if (!Ending())
-                                {
-                                    output.Add(new FlatStatement.Suspend(endPoint));
-                                }
+                                output.Add(endPoint);
                             }
-                            output.Add(endPoint);
                             break;
                         }
                         else
                         {
-                            FlatStatement.EntryPoint thenPoint = new FlatStatement.EntryPoint();
-                            FlatStatement.Suspend thenSuspend = new FlatStatement.Suspend(thenPoint);
-                            output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenSuspend, conditional.ElseDoThis));
-                            FlatStatement.EntryPoint endPoint = new FlatStatement.EntryPoint();
-                            output.Add(new FlatStatement.Suspend(endPoint));
-                            output.Add(thenPoint);
+                            int moveStart;
+                            FlatStatement.Block thenBlock = new Statement.Block(new NameDictionary());
+                            output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenBlock, conditional.ElseDoThis));
+                            FlatStatement.EntryPoint endPoint = null;
+                            if (conditional.ElseDoThis == null || !conditional.ElseDoThis.Returns())
+                            {
+                                if (endPoint == null)
+                                {
+                                    endPoint = new FlatStatement.EntryPoint();
+                                }
+                                output.Add(new FlatStatement.Suspend(endPoint));
+                            }
+                            moveStart = output.Count;
                             Statement(conditional.ThenDoThis);
-                            output.Add(new FlatStatement.Suspend(endPoint));
-                            output.Add(endPoint);
+                            if (!Ending())
+                            {
+                                if (endPoint == null)
+                                {
+                                    endPoint = new FlatStatement.EntryPoint();
+                                }
+                                output.Add(new FlatStatement.Suspend(endPoint));
+                            }
+                            MoveUpToEntryPoint(moveStart, thenBlock);
+                            if (endPoint != null)
+                            {
+                                output.Add(endPoint);
+                            }
                             break;
                         }
                     }
