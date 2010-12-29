@@ -9,7 +9,7 @@ namespace SPAGS
 {
     public partial class TestPlugin : IEditorComponent, IAGSEditorPlugin
     {
-        void WriteJavascripts(ScriptCollection scripts, TextWriter output)
+        void WriteJavascripts(ScriptCollection scripts, TextWriter output, string guid)
         {
             usedWords = new Dictionary<string,bool>();
             foreach (string word in YieldJavascriptKeywords()) usedWords.Add(word, true);
@@ -179,10 +179,16 @@ namespace SPAGS
                 }
             }
 
+            output.WriteLine("(function(){");
+            Indent(output, 1);
+            output.WriteLine("var scripts = {};");
             foreach (Script script in list)
             {
-                WriteJavascript(script, output, 0);
+                WriteJavascript(script, output, 1);
             }
+            Indent(output, 1);
+            output.WriteLine("ags.games[\"" + guid + "\"].scripts = scripts;");
+            output.WriteLine("})();");
         }
 
         Script currentScript;

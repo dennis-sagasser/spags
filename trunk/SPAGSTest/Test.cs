@@ -87,7 +87,7 @@ namespace SPAGS
                         scripts.AddStandardHeaders(_editor);
                         using (TextWriter output = new StreamWriter(path))
                         {
-                            WriteJavascripts(scripts, output);
+                            WriteJavascripts(scripts, output, _editor.CurrentGame.Settings.GUID.ToString("N"));
                         }
                         MessageBox.Show(JS_FILENAME + " created!", "Script dump", MessageBoxButtons.OK);
                     }
