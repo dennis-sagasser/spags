@@ -273,20 +273,24 @@ namespace SPAGS
                 FunctionData fdata = UserData<Function, FunctionData>.Get(func);
                 fdata.Name = fdata.Name.Replace("::", DOUBLE_COLON_REPLACE);
                 if (usedWords.ContainsKey(fdata.Name)) fdata.Name = "f$" + fdata.Name;
-                output.Write("  \"" + fdata.Name + "\": function(");
                 if (fdata.Blocking)
                 {
-                    output.Write("$ctx, $stk, $vars");
+                    output.Write("  \"" + fdata.Name + "\": util.blockingFunction([");
                     for (int i = 0; i < func.ParameterVariables.Count; i++)
                     {
                         Variable paramVar = func.ParameterVariables[i];
                         VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
                         vdef.Blocked = true;
                         if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
-                    }
+                        if (i > 0) output.Write(", ");
+                        output.Write("'" + vdef.Name + "'");
+                    }                    
+                    output.Write("], function(");
+                    output.Write("$ctx, $stk, $vars");
                 }
                 else
                 {
+                    output.Write("  \"" + fdata.Name + "\": function(");
                     for (int i = 0; i < func.ParameterVariables.Count; i++)
                     {
                         if (i != 0) output.Write(", ");
@@ -358,7 +362,14 @@ namespace SPAGS
                         WriteStatementJS(stmt, output, indent + 2);
                     }
                 }
-                output.WriteLine("  },");
+                if (fdata.Blocking)
+                {
+                    output.WriteLine("  }),");
+                }
+                else
+                {
+                    output.WriteLine("  },");
+                }
             }
 
             output.WriteLine("  \"$serialize\": function(slzr) {");
@@ -555,23 +566,16 @@ namespace SPAGS
                         if (switchDefault != null)
                         {
                             Indent(output, indent + 1);
-                            output.Write("default: ");
+                            output.WriteLine("default:");
 
                             Statement.Block defaultBlock = switchDefault as Statement.Block;
                             if (defaultBlock == null)
                             {
-                                output.WriteLine();
                                 Indent(output, indent + 2);
-                                WriteStatementJS(switchDefault, output, indent + 2);
-                            }
-                            else if (defaultBlock.Scope.Count != 0)
-                            {
-                                output.Write(" ");
                                 WriteStatementJS(switchDefault, output, indent + 2);
                             }
                             else
                             {
-                                output.WriteLine();
                                 foreach (Statement caseStmt in defaultBlock.ChildStatements)
                                 {
                                     Indent(output, indent + 2);
@@ -721,17 +725,6 @@ namespace SPAGS
                 case FlatStatementType.EntryPoint:
                     FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)flat;
                     output.WriteLine("// entry point " + entryPoint.Number + ":");
-                    break;
-                case FlatStatementType.InitParameters:
-                    output.Write("$ctx.initParams(");
-                    for (int i = 0; i < currentFunction.ParameterVariables.Count; i++)
-                    {
-                        Variable var = currentFunction.ParameterVariables[i];
-                        if (i > 0) output.Write(", ");
-                        VariableData vdata = UserData<Variable,VariableData>.Get(var);
-                        output.Write("'" + vdata.Name + "'");
-                    }
-                    output.WriteLine(");");
                     break;
                 case FlatStatementType.Suspend:
                     FlatStatement.Suspend suspend = (FlatStatement.Suspend)flat;

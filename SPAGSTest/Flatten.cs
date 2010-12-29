@@ -7,8 +7,7 @@ namespace SPAGS
 {
     public enum FlatStatementType
     {
-        EntryPoint, Finish, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop,
-        InitParameters
+        EntryPoint, Finish, Suspend, StackBinOp, StackArrayIndex, IfBranch, Push, Begin, AllocateArray, Pop
     }
     public abstract class FlatStatement : Statement
     {
@@ -36,13 +35,6 @@ namespace SPAGS
                     if (RedirectTo == null) return this;
                     return RedirectTo.Redirected;
                 }
-            }
-        }
-        public class InitParameters : FlatStatement
-        {
-            public override FlatStatementType FlatStatementType
-            {
-                get { return FlatStatementType.InitParameters; }
             }
         }
         public abstract FlatStatementType FlatStatementType
@@ -264,10 +256,6 @@ namespace SPAGS
         public void Go()
         {
             output.Add(new FlatStatement.EntryPoint());
-            if (function.ParameterVariables.Count > 0)
-            {
-                output.Add(new FlatStatement.InitParameters());
-            }
             Statement(function.Body);
             for (int i = output.Count - 1; i >= 0; i--)
             {
@@ -370,6 +358,30 @@ namespace SPAGS
             CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(stmt);
             if (!cudata.Blocked && !(stmt is Statement.Block))
             {
+                if (output.Count >= 3)
+                {
+                    FlatStatement.EntryPoint prevEntryPoint = output[output.Count - 1] as FlatStatement.EntryPoint;
+                    FlatStatement.Suspend suspend = output[output.Count - 2] as FlatStatement.Suspend;
+                    FlatStatement.Begin previousBegin = output[output.Count - 3] as FlatStatement.Begin;
+                    if (prevEntryPoint != null && suspend != null && previousBegin != null
+                        && suspend.EntryPoint == prevEntryPoint && previousBegin.IgnoreReturnValue)
+                    {
+                        Function func;
+                        List<Expression> fparams;
+                        if (stmt.TryGetSimpleCall(out func, out fparams))
+                        {
+                            FlatStatement.Begin begin = new FlatStatement.Begin(true);
+                            begin.Function = func;
+                            begin.DirectParams = fparams;
+                            if (begin.NonChangingParams())
+                            {
+                                output.Insert(output.Count - 2, begin);
+                                return;
+                            }
+                        }
+                    }
+                }
+
                 output.Add(stmt);
                 return;
             }
@@ -417,7 +429,8 @@ namespace SPAGS
                             int moveStart;
                             Statement.Block thenBlock = new Statement.Block(new NameDictionary());
                             Statement.Block elseBlock = new Statement.Block(new NameDictionary());
-                            output.Add(new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenBlock, elseBlock));
+                            Statement.If theIf = new Statement.If(Pop(conditional.IfThisIsTrue.GetValueType()), thenBlock, elseBlock);
+                            output.Add(theIf);
                             moveStart = output.Count;
                             Statement(conditional.ThenDoThis);
                             MoveUpToEntryPoint(moveStart, thenBlock);
@@ -430,6 +443,10 @@ namespace SPAGS
                             moveStart = output.Count;
                             Statement(conditional.ElseDoThis);
                             MoveUpToEntryPoint(moveStart, elseBlock);
+                            if (elseBlock.ChildStatements.Count == 1)
+                            {
+                                theIf.ElseDoThis = elseBlock.ChildStatements[0];
+                            }
                             if (!Ending())
                             {
                                 endPoint = endPoint ?? new FlatStatement.EntryPoint();

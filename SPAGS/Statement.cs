@@ -234,7 +234,7 @@ namespace SPAGS
             }
             public readonly Expression IfThisIsTrue;
             public readonly Statement ThenDoThis;
-            public readonly Statement ElseDoThis;
+            public Statement ElseDoThis;
             public override IEnumerable<Expression> YieldExpressions()
             {
                 yield return IfThisIsTrue;
