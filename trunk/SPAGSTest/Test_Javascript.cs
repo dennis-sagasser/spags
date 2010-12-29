@@ -274,13 +274,27 @@ namespace SPAGS
                 fdata.Name = fdata.Name.Replace("::", DOUBLE_COLON_REPLACE);
                 if (usedWords.ContainsKey(fdata.Name)) fdata.Name = "f$" + fdata.Name;
                 output.Write("  \"" + fdata.Name + "\": function(");
-                for (int i = 0; i < func.ParameterVariables.Count; i++)
+                if (fdata.Blocking)
                 {
-                    if (i != 0) output.Write(", ");
-                    Variable paramVar = func.ParameterVariables[i];
-                    VariableData vdef = UserData<Variable,VariableData>.Get(paramVar);
-                    if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
-                    output.Write(vdef.Name);
+                    output.Write("$ctx, $stk, $vars");
+                    for (int i = 0; i < func.ParameterVariables.Count; i++)
+                    {
+                        Variable paramVar = func.ParameterVariables[i];
+                        VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
+                        vdef.Blocked = true;
+                        if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < func.ParameterVariables.Count; i++)
+                    {
+                        if (i != 0) output.Write(", ");
+                        Variable paramVar = func.ParameterVariables[i];
+                        VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
+                        if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
+                        output.Write(vdef.Name);
+                    }
                 }
                 output.WriteLine(") {");
                 NameDictionary tempUsedNames = new NameDictionary();
@@ -708,6 +722,17 @@ namespace SPAGS
                     FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)flat;
                     output.WriteLine("// entry point " + entryPoint.Number + ":");
                     break;
+                case FlatStatementType.InitParameters:
+                    output.Write("$ctx.initParams(");
+                    for (int i = 0; i < currentFunction.ParameterVariables.Count; i++)
+                    {
+                        Variable var = currentFunction.ParameterVariables[i];
+                        if (i > 0) output.Write(", ");
+                        VariableData vdata = UserData<Variable,VariableData>.Get(var);
+                        output.Write("'" + vdata.Name + "'");
+                    }
+                    output.WriteLine(");");
+                    break;
                 case FlatStatementType.Suspend:
                     FlatStatement.Suspend suspend = (FlatStatement.Suspend)flat;
                     if (suspend.EntryPoint == null)
@@ -716,7 +741,7 @@ namespace SPAGS
                     }
                     else
                     {
-                        output.WriteLine("return $ctx.resumeFrom(" + suspend.EntryPoint.Number + ");");
+                        output.WriteLine("return $ctx.nextEntryPoint(" + suspend.EntryPoint.Number + ");");
                     }
                     break;
                 case FlatStatementType.Push:
