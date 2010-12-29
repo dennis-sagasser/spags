@@ -26,6 +26,17 @@ namespace SPAGS
             {
                 get { return FlatStatementType.EntryPoint; }
             }
+            public EntryPoint RedirectTo;
+            public Expression FinishValue;
+            public bool UseFinishValue;
+            public EntryPoint Redirected
+            {
+                get
+                {
+                    if (RedirectTo == null) return this;
+                    return RedirectTo.Redirected;
+                }
+            }
         }
         public class InitParameters : FlatStatement
         {
@@ -250,23 +261,61 @@ namespace SPAGS
                 output.Add(new FlatStatement.InitParameters());
             }
             Statement(function.Body);
-            Statement prev = null;
+            for (int i = output.Count - 1; i >= 0; i--)
+            {
+                Statement stmt = output[i];
+                if (stmt is FlatStatement.EntryPoint)
+                {
+                    FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)stmt;
+                    if (i > 0 && output[i-1] is FlatStatement.EntryPoint)
+                    {
+                        entryPoint.RedirectTo = ((FlatStatement.EntryPoint)output[i-1]);
+                        output.RemoveAt(i);
+                    }
+                }
+                else if (stmt is FlatStatement.Finish || stmt is Statement.Return)
+                {
+                    Expression value;
+                    if (stmt is FlatStatement.Finish)
+                    {
+                        value = ((FlatStatement.Finish)stmt).Value;
+                    }
+                    else
+                    {
+                        value = ((Statement.Return)stmt).Value;
+                    }
+                    if (output[i - 1] is FlatStatement.EntryPoint && value.IsConstant())
+                    {
+                        output.RemoveAt(i);
+                        while (i > 0 && output[i - 1] is FlatStatement.EntryPoint)
+                        {
+                            i--;
+                            FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)output[i];
+                            entryPoint.UseFinishValue = true;
+                            entryPoint.FinishValue = value;
+                            output.RemoveAt(i);
+                        }
+                    }
+                }
+                else if (stmt is FlatStatement.Suspend)
+                {
+                    FlatStatement.Suspend suspend = (FlatStatement.Suspend)stmt;
+                    while (i > 0 && output[i - 1] is FlatStatement.EntryPoint)
+                    {
+                        ((FlatStatement.EntryPoint)output[i - 1]).RedirectTo = suspend.EntryPoint;
+                        output.RemoveAt(i);
+                        output.RemoveAt(i - 1);
+                        i--;
+                    }
+                }
+            }
             int pointNum = 0;
             foreach (Statement stmt in output)
             {
                 if (stmt is FlatStatement.EntryPoint)
                 {
-                    FlatStatement.EntryPoint entryPoint = (FlatStatement.EntryPoint)stmt;
-                    if (prev is FlatStatement.EntryPoint)
-                    {
-                        entryPoint.Number = ((FlatStatement.EntryPoint)prev).Number;
-                    }
-                    else
-                    {
-                        entryPoint.Number = pointNum++;
-                    }
+                    ((FlatStatement.EntryPoint)stmt).Number = pointNum++;
                 }
-                prev = stmt;
             }
         }
         void PushExpression(Expression expr)
@@ -383,11 +432,8 @@ namespace SPAGS
                             output.Add(new FlatStatement.Suspend(endPoint));
                             output.Add(thenPoint);
                             Statement(conditional.ThenDoThis);
-                            if (!Ending())
-                            {
-                                output.Add(new FlatStatement.Suspend(endPoint));
-                                output.Add(endPoint);
-                            }
+                            output.Add(new FlatStatement.Suspend(endPoint));
+                            output.Add(endPoint);
                             break;
                         }
                     }
