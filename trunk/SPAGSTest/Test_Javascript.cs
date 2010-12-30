@@ -91,8 +91,6 @@ namespace SPAGS
                     case "ProcessClick":
                     case "QuitGame":
                     case "AbortGame":
-                    case "RestoreGameDialog":
-                    case "SaveGameDialog":
                     case "RestartGame":
                     case "InputBox":
                     case "InventoryScreen":
