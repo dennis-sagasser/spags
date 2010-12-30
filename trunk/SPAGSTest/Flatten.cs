@@ -783,43 +783,58 @@ namespace SPAGS
                     Expression.BinaryOperator binop = (Expression.BinaryOperator)expr;
                     if (binop.Token.Type == TokenType.LogicalAnd)
                     {
+                        int moveFrom;
                         Expression(binop.Left);
                         FlushStackPushStack();
-                        FlatStatement.EntryPoint valueOK = new FlatStatement.EntryPoint();
-                        FlatStatement.EntryPoint changeValue = new FlatStatement.EntryPoint();
+                        Statement.Block thenBlock = new Statement.Block(new NameDictionary());
                         output.Add(
                             new Statement.If(
                                 new FlatExpression.StackPeek(binop.Left.GetValueType()),
-                                new FlatStatement.Suspend(changeValue),
-                                new FlatStatement.Suspend(valueOK)));
-                        output.Add(changeValue);
+                                thenBlock,
+                                null));
+                        FlatStatement.EntryPoint endPoint = null;
+                        if (UserData<CodeUnit, CodeUnitData>.Get(binop.Right).Blocked)
+                        {
+                            endPoint = endPoint ?? new FlatStatement.EntryPoint();
+                            output.Add(new FlatStatement.Suspend(endPoint));
+                        }
+                        moveFrom = output.Count;
                         output.Add(new FlatStatement.Pop());
                         Expression(binop.Right);
                         FlushStackPushStack();
-                        if (!Ending())
+                        MoveUpToEntryPoint(moveFrom, thenBlock);
+                        if (endPoint != null)
                         {
-                            output.Add(new FlatStatement.Suspend(valueOK));
+                            output.Add(endPoint);
                         }
-                        output.Add(valueOK);
                         break;
                     }
                     else if (binop.Token.Type == TokenType.LogicalOr)
                     {
+                        int moveFrom;
                         Expression(binop.Left);
                         FlushStackPushStack();
-                        FlatStatement.EntryPoint valueOK = new FlatStatement.EntryPoint();
-                        FlatStatement.EntryPoint changeValue = new FlatStatement.EntryPoint();
+                        Statement.Block thenBlock = new Statement.Block(new NameDictionary());
                         output.Add(
                             new Statement.If(
-                                new FlatExpression.StackPeek(binop.Left.GetValueType()),
-                                new FlatStatement.Suspend(valueOK),
-                                new FlatStatement.Suspend(changeValue)));
-                        output.Add(changeValue);
+                                SPAGS.Expression.LogicalNegation(new FlatExpression.StackPeek(binop.Left.GetValueType())),
+                                thenBlock,
+                                null));
+                        FlatStatement.EntryPoint endPoint = null;
+                        if (UserData<CodeUnit, CodeUnitData>.Get(binop.Right).Blocked)
+                        {
+                            endPoint = endPoint ?? new FlatStatement.EntryPoint();
+                            output.Add(new FlatStatement.Suspend(endPoint));
+                        }
+                        moveFrom = output.Count;
                         output.Add(new FlatStatement.Pop());
                         Expression(binop.Right);
                         FlushStackPushStack();
-                        output.Add(new FlatStatement.Suspend(valueOK));
-                        output.Add(valueOK);
+                        MoveUpToEntryPoint(moveFrom, thenBlock);
+                        if (endPoint != null)
+                        {
+                            output.Add(endPoint);
+                        }
                         break;
                     }
                     else
