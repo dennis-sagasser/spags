@@ -179,7 +179,7 @@ namespace SPAGS
     }
     public enum FlatExpressionType
     {
-        StackPop, StackPeek, CurrentEntryPoint
+        StackPop, StackPeek, CurrentEntryPoint, Placeholder
     }
     public abstract class FlatExpression : Expression
     {
@@ -194,6 +194,32 @@ namespace SPAGS
         public abstract FlatExpressionType FlatExpressionType
         {
             get;
+        }
+        public class Placeholder : FlatExpression
+        {
+            public Placeholder(string name, ValueType valueType)
+            {
+                Name = name;
+                ValueType = valueType;
+            }
+            public string Name;
+            public ValueType ValueType;
+            public override ValueType GetValueType()
+            {
+                return ValueType;
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (this == ex);
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
+            public override FlatExpressionType FlatExpressionType
+            {
+                get { return FlatExpressionType.Placeholder; }
+            }
         }
         public class CurrentEntryPoint : FlatExpression
         {

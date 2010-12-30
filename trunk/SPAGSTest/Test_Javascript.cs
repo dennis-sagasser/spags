@@ -824,63 +824,20 @@ namespace SPAGS
                     output.WriteLine("$stk.pop();");
                     break;
                 case FlatStatementType.StackBinOp:
-                    switch (((FlatStatement.StackBinOp)flat).Token.Type)
-                    {
-                        case TokenType.Add:
-                            output.WriteLine("$ctx.s_add();");
-                            break;
-                        case TokenType.BitwiseAnd:
-                            output.WriteLine("$ctx.s_band();");
-                            break;
-                        case TokenType.BitwiseLeftShift:
-                            output.WriteLine("$ctx.s_lshift();");
-                            break;
-                        case TokenType.BitwiseOr:
-                            output.WriteLine("$ctx.s_bor();");
-                            break;
-                        case TokenType.BitwiseRightShift:
-                            output.WriteLine("$ctx.s_rshift();");
-                            break;
-                        case TokenType.BitwiseXor:
-                            output.WriteLine("$ctx.s_bxor();");
-                            break;
-                        case TokenType.Divide:
-                            output.WriteLine("$ctx.s_div();");
-                            break;
-                        case TokenType.IsEqualTo:
-                            output.WriteLine("$ctx.s_eq();");
-                            break;
-                        case TokenType.IsGreaterThan:
-                            output.WriteLine("$ctx.s_gt()");
-                            break;
-                        case TokenType.IsGreaterThanOrEqualTo:
-                            output.WriteLine("$ctx.s_gte()");
-                            break;
-                        case TokenType.IsLessThan:
-                            output.WriteLine("$ctx.s_lt();");
-                            break;
-                        case TokenType.IsLessThanOrEqualTo:
-                            output.WriteLine("$ctx.s_lte();");
-                            break;
-                        case TokenType.IsNotEqualTo:
-                            output.WriteLine("$ctx.s_neq();");
-                            break;
-                        case TokenType.LogicalAnd:
-                            output.WriteLine("$ctx.s_and();");
-                            break;
-                        case TokenType.LogicalOr:
-                            output.WriteLine("$ctx.s_or();");
-                            break;
-                        case TokenType.Modulus:
-                            output.WriteLine("$ctx.s_mod();");
-                            break;
-                        case TokenType.Multiply:
-                            output.WriteLine("$ctx.s_mul();");
-                            break;
-                        case TokenType.Subtract:
-                            output.WriteLine("$ctx.s_sub();");
-                            break;
-                    }
+                    output.Write("$stk.push((function(a, b) { return ");
+                    /*
+                     *   /!\ TODO:
+                     *     Get the correct ValueTypes for a and b!
+                     * 
+                     */
+                    WriteExpressionJS(
+                        new Expression.BinaryOperator(
+                            ((FlatStatement.StackBinOp)flat).Token,
+                            new FlatExpression.Placeholder("a", ValueType.Int),
+                            new FlatExpression.Placeholder("b", ValueType.Int)),
+                        output,
+                        indent);
+                    output.WriteLine("; }).apply(null, $stk.splice(-2)));");
                     break;
             }
         }
@@ -1273,6 +1230,9 @@ namespace SPAGS
                     break;
                 case FlatExpressionType.CurrentEntryPoint:
                     output.Write("$ctx.entryPoint");
+                    break;
+                case FlatExpressionType.Placeholder:
+                    output.Write(((FlatExpression.Placeholder)flat).Name);
                     break;
             }
         }
