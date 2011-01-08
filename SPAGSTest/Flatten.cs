@@ -600,12 +600,13 @@ namespace SPAGS
                         {
                             int moveStart;
                             Statement.Block elseBlock = new Statement.Block(new NameDictionary());
-                            output.Add(new Statement.If(
+                            Statement.If theIf =new Statement.If(
                                 Pop(conditional.IfThisIsTrue.GetValueType()),
                                 conditional.ThenDoThis, 
-                                elseBlock));
+                                elseBlock);
+                            output.Add(theIf);
                             FlatStatement.EntryPoint endPoint = null;
-                            if (conditional.ThenDoThis.Returns())
+                            if (!conditional.ThenDoThis.Returns())
                             {
                                 endPoint = endPoint ?? new FlatStatement.EntryPoint();
                                 output.Add(new FlatStatement.Suspend(endPoint));
@@ -613,6 +614,10 @@ namespace SPAGS
                             moveStart = output.Count;
                             Statement(conditional.ElseDoThis);
                             MoveUpToEntryPoint(moveStart, elseBlock);
+                            if (elseBlock.ChildStatements.Count == 1 && elseBlock.ChildStatements[0].Type == StatementType.If)
+                            {
+                                theIf.ElseDoThis = elseBlock.ChildStatements[0];
+                            }
                             if (!Ending())
                             {
                                 endPoint = endPoint ?? new FlatStatement.EntryPoint();
