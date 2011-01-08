@@ -386,6 +386,7 @@ namespace SPAGS
                                         }
                                         earlierVariable.Defined = true;
                                         earlierVariable.OwnerScript = script;
+                                        earlierVariable.InitialValue = initialValue;
                                         script.DefinedVariables.Add(earlierVariable);
                                     }
                                     else
@@ -415,6 +416,12 @@ namespace SPAGS
                             }
 
                             // script function
+
+                            // functions cannot return string buffers, only values
+                            if (valueType.Category == ValueTypeCategory.StringBuffer)
+                            {
+                                valueType = ValueType.StringValue;
+                            }
 
                             ValueType thisType = null;
 
