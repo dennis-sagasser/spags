@@ -13,7 +13,7 @@ namespace SPAGS
         {
             usedWords = new Dictionary<string,bool>();
             foreach (string word in YieldJavascriptKeywords()) usedWords.Add(word, true);
-            usedWords.Add(EXTRAS_OBJECT, true);
+            usedWords.Add(IMPORTED_FUNCS_OBJECT, true);
             usedWords.Add(UTIL_OBJECT, true);
             List<Script> list = new List<Script>();
             foreach (Script header in scripts.Headers)
@@ -905,14 +905,22 @@ namespace SPAGS
             return false;
         }
 
-        const string EXTRAS_OBJECT = "engine";
+        const string IMPORTED_FUNCS_OBJECT = "engine";
+        const string IMPORTED_VARS_OBJECT = "game";
         const string UTIL_OBJECT = "util";
 
-        void WriteScriptOwnerJS(Script script, TextWriter output)
+        void WriteScriptOwnerJS(Script script, TextWriter output, bool variable)
         {
             if (script == null)
             {
-                output.Write(EXTRAS_OBJECT);
+                if (variable)
+                {
+                    output.Write(IMPORTED_VARS_OBJECT);
+                }
+                else
+                {
+                    output.Write(IMPORTED_FUNCS_OBJECT);
+                }
             }
             else
             {
@@ -922,7 +930,7 @@ namespace SPAGS
 
         void WriteFunctionJS(Function function, TextWriter output)
         {
-            WriteScriptOwnerJS(function.OwnerScript, output);
+            WriteScriptOwnerJS(function.OwnerScript, output, false);
             output.Write("." + function.Name.Replace("::", DOUBLE_COLON_REPLACE));
         }
 
@@ -996,20 +1004,26 @@ namespace SPAGS
                     {
                         case ValueTypeCategory.Float:
                         case ValueTypeCategory.Int:
-                            output.Write(UTIL_OBJECT + ".arrayZeroes(");
+                            output.Write(UTIL_OBJECT + ".fillArray(");
+                            WriteExpressionJS(allocArray.Length, output, indent + 2);
+                            output.Write(", 0)");
                             break;
                         case ValueTypeCategory.Struct:
                             ValueType.Struct structType = (ValueType.Struct)allocArray.ElementType;
                             if (structType.IsManaged) goto default;
-                            WriteScriptOwnerJS(structType.OwnerScript, output);
-                            output.Write("." + structType.Name + ".createArray(");
+                            output.Write("util.structArray(");
+                            WriteExpressionJS(allocArray.Length, output, indent + 2);
+                            output.Write(", ");
+                            WriteScriptOwnerJS(structType.OwnerScript, output, false);
+                            output.Write("." + structType.Name);
+                            output.Write(")");
                             break;
                         default:
-                            output.Write(UTIL_OBJECT + ".arrayNulls(");
+                            output.Write(UTIL_OBJECT + ".fillArray(");
+                            WriteExpressionJS(allocArray.Length, output, indent + 2);
+                            output.Write(", null)");
                             break;
                     }
-                    WriteExpressionJS(allocArray.Length, output, indent + 2);
-                    output.Write(")");
                     break;
                 case ExpressionType.ArrayIndex:
                     Expression.ArrayIndex arrayIndex = (Expression.ArrayIndex)expr;
@@ -1081,21 +1095,23 @@ namespace SPAGS
                     {
                         throw new Exception("Calling on a non-callable object: " + call.CallingOn.ToString());
                     }
-                    for (int i = 0; i < Math.Max(signature.Parameters.Count, call.Parameters.Count); i++)
+                    int i;
+                    for (i = 0; i < call.Parameters.Count; i++)
                     {
-                        if (i < call.Parameters.Count)
+                        if (i != 0) output.Write(", ");
+                        if (i < signature.Parameters.Count)
                         {
-                            if (i != 0) output.Write(", ");
-                            if (i < signature.Parameters.Count)
-                            {
-                                WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
-                            }
-                            else
-                            {
-                                WriteExpressionJS(call.Parameters[i], output, indent + 1);
-                            }
+                            WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
                         }
                         else
+                        {
+                            WriteExpressionJS(call.Parameters[i], output, indent + 1);
+                        }
+                    }
+                    if (i < signature.Parameters.Count)
+                    {
+                        output.Write(", [");
+                        for (; i < signature.Parameters.Count; i++)
                         {
                             Expression paramValue = signature.Parameters[i].DefaultValue;
                             if (paramValue == null)
@@ -1108,6 +1124,7 @@ namespace SPAGS
                                 WriteExpressionJS(paramValue, output, indent, signature.Parameters[i].Type);
                             }
                         }
+                        output.Write("]");
                     }
                     output.Write(")");
                     break;
@@ -1189,7 +1206,7 @@ namespace SPAGS
                 case ExpressionType.AllocStruct:
                     Expression.AllocateStruct newStruct = (Expression.AllocateStruct)expr;
                     output.Write("new ");
-                    WriteScriptOwnerJS(newStruct.TheStructType.OwnerScript, output);
+                    WriteScriptOwnerJS(newStruct.TheStructType.OwnerScript, output, false);
                     output.Write("." + newStruct.TheStructType.Name + "()");
                     break;
                 case ExpressionType.Variable:
@@ -1198,7 +1215,7 @@ namespace SPAGS
                     VariableData vdata = UserData<Variable, VariableData>.Get(v);
                     if (v is ScriptVariable)
                     {
-                        WriteScriptOwnerJS(v.OwnerScript, output);
+                        WriteScriptOwnerJS(v.OwnerScript, output, true);
                         output.Write("." + vdata.Name);
                     }
                     else if (vdata.Blocked)
