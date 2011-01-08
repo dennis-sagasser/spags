@@ -24,7 +24,7 @@ namespace SPAGS
         public readonly ValueType Type;
         private readonly string name;
         public string Name { get { return name; } }
-        public readonly Expression InitialValue;
+        public Expression InitialValue;
         public NameHolderType NameHolderType { get { return NameHolderType.Variable; } }
         public override string ToString()
         {
