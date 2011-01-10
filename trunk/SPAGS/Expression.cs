@@ -224,23 +224,55 @@ namespace SPAGS
                 yield return CallingOn;
                 foreach (Expression expr in Parameters) yield return expr;
             }
-            public override bool TryGetSimpleCall(out ActualFunction func, out List<Expression> parameters)
+            public override bool TryGetSimpleCall(
+                out ActualFunction func,
+                out List<Expression> parameters,
+                out List<Expression> varargs)
             {
+                parameters = new List<Expression>();
                 if (CallingOn is Function)
                 {
                     func = ((Function)CallingOn).TheFunction;
-                    parameters = Parameters;
-                    return true;
                 }
-                if (CallingOn is Method)
+                else if (CallingOn is Method)
                 {
                     Method method = (Method)CallingOn;
-                    parameters = new List<Expression>(Parameters);
-                    if (method.Target != null) parameters.Insert(0, method.Target);
                     func = method.TheMethod.Function;
-                    return true;
+                    if (method.Target != null) parameters.Insert(0, method.Target);
                 }
-                throw new Exception("Call on " + CallingOn.Type);
+                else
+                {
+                    throw new Exception("Call on " + CallingOn.Type);
+                }
+                int i;
+                for (i = 0; i < func.Signature.Parameters.Count; i++)
+                {
+                    if (i < Parameters.Count)
+                    {
+                        parameters.Add(Parameters[i]);
+                    }
+                    else if (func.Signature.Parameters[i].DefaultValue != null)
+                    {
+                        parameters.Add(func.Signature.Parameters[i].DefaultValue);
+                    }
+                    else
+                    {
+                        parameters.Add(func.Signature.Parameters[i].Type.CreateDefaultValueExpression());
+                    }
+                }
+                if (i < Parameters.Count)
+                {
+                    varargs = new List<Expression>();
+                    for (; i < Parameters.Count; i++)
+                    {
+                        varargs.Add(Parameters[i]);
+                    }
+                }
+                else
+                {
+                    varargs = null;
+                }
+                return true;
             }
             public override void WriteTo(TextWriter output)
             {
@@ -336,17 +368,21 @@ namespace SPAGS
             {
                 return false;
             }
-            public override bool TryGetSimpleCall(out ActualFunction func, out List<Expression> parameters)
+            public override bool TryGetSimpleCall(
+                out ActualFunction func,
+                out List<Expression> parameters,
+                out List<Expression> varargs)
             {
                 Attribute attr = Target as Attribute;
                 if (attr == null)
                 {
-                    return base.TryGetSimpleCall(out func, out parameters);
+                    return base.TryGetSimpleCall(out func, out parameters, out varargs);
                 }
                 parameters = new List<Expression>();
                 if (attr.Target != null) parameters.Add(attr.Target);
                 parameters.Add(Index);
                 func = attr.TheAttribute.Getter;
+                varargs = null;
                 return true;
             }
             public override ValueType GetValueType()
@@ -521,15 +557,19 @@ namespace SPAGS
             {
                 yield return TheAttribute.Getter;
             }
-            public override bool TryGetSimpleCall(out ActualFunction func, out List<Expression> parameters)
+            public override bool TryGetSimpleCall(
+                out ActualFunction func,
+                out List<Expression> parameters,
+                out List<Expression> varargs)
             {
                 if (TheAttribute.IsArray)
                 {
-                    return base.TryGetSimpleCall(out func, out parameters);
+                    return base.TryGetSimpleCall(out func, out parameters, out varargs);
                 }
                 parameters = new List<Expression>();
                 if (Target != null) parameters.Add(Target);
                 func = TheAttribute.Getter;
+                varargs = null;
                 return true;
             }
             public override void WriteTo(TextWriter output)

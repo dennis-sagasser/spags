@@ -33,10 +33,14 @@ namespace SPAGS
                 }
             }
         }
-        public virtual bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
+        public virtual bool TryGetSimpleCall(
+            out Function func,
+            out List<Expression> parameters,
+            out List<Expression> varargs)
         {
             func = null;
             parameters = null;
+            varargs = null;
             return false;
         }
 
