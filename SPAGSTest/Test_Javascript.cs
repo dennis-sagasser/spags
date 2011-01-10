@@ -48,7 +48,8 @@ namespace SPAGS
                     {
                         Function f;
                         List<Expression> parameters;
-                        if (codeUnit.TryGetSimpleCall(out f, out parameters))
+                        List<Expression> varargs;
+                        if (codeUnit.TryGetSimpleCall(out f, out parameters, out varargs))
                         {
                             List<CodeUnit> callSitesList;
                             List<Function> calledByList;
@@ -791,8 +792,18 @@ namespace SPAGS
                     WriteFunctionJS(begin.Function, output);
                     if (begin.StackParams > 0)
                     {
-                        output.Write(", $stk.splice(-" + begin.StackParams + ")");
-                        if (begin.DirectParams.Count > 0)
+                        if (begin.StackVarargs > 0 || (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0))
+                        {
+                            output.Write(", util.extractVarargs("
+                                + (begin.StackVarargs + (begin.DirectVarargs == null ? 0 : begin.DirectVarargs.Count))
+                                + ", $stk.splice(-" + begin.StackParams + ")");
+                        }
+                        else
+                        {
+                            output.Write(", $stk.splice(-" + begin.StackParams + ")");
+                        }
+                        if (begin.DirectParams.Count > 0
+                            || (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0))
                         {
                             output.Write(".concat([");
                             for (int i = 0; i < begin.DirectParams.Count; i++)
@@ -800,16 +811,50 @@ namespace SPAGS
                                 if (i > 0) output.Write(", ");
                                 WriteExpressionJS(begin.DirectParams[i], output, indent);
                             }
+                            if (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0)
+                            {
+                                if (begin.DirectParams.Count > 0)
+                                {
+                                    output.Write(", ");
+                                }
+                                for (int i = 0; i < begin.DirectVarargs.Count; i++)
+                                {
+                                    if (i > 0) output.Write(", ");
+                                    WriteExpressionJS(begin.DirectVarargs[i], output, indent);
+                                }
+                            }
                             output.Write("])");
                         }
+                        if (begin.StackVarargs > 0 || (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0))
+                        {
+                            output.Write(")");
+                        }
                     }
-                    else if (begin.DirectParams.Count > 0)
+                    else if (begin.DirectParams.Count > 0
+                        || (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0))
                     {
                         output.Write(", [");
                         for (int i = 0; i < begin.DirectParams.Count; i++)
                         {
                             if (i > 0) output.Write(", ");
                             WriteExpressionJS(begin.DirectParams[i], output, indent);
+                        }
+                        if (begin.DirectVarargs != null && begin.DirectVarargs.Count > 0)
+                        {
+                            if (begin.DirectParams.Count != 0)
+                            {
+                                output.Write(", [");
+                            }
+                            else
+                            {
+                                output.Write("[");
+                            }
+                            for (int i = 0; i < begin.DirectVarargs.Count; i++)
+                            {
+                                if (i > 0) output.Write(", ");
+                                WriteExpressionJS(begin.DirectVarargs[i], output, indent);
+                            }
+                            output.Write("]");
                         }
                         output.Write("]");
                     }

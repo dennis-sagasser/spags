@@ -318,7 +318,10 @@ namespace SPAGS
             public readonly Expression Target;
             public readonly Expression Value;
             public readonly TokenType AssignType;
-            public override bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
+            public override bool TryGetSimpleCall(
+                out Function func,
+                out List<Expression> parameters,
+                out List<Expression> varargs)
             {
                 Expression.Attribute attr = Target as Expression.Attribute;
                 Expression.ArrayIndex index = Target as Expression.ArrayIndex;
@@ -328,7 +331,7 @@ namespace SPAGS
                 }
                 if (attr == null)
                 {
-                    return base.TryGetSimpleCall(out func, out parameters);
+                    return base.TryGetSimpleCall(out func, out parameters, out varargs);
                 }
                 parameters = new List<Expression>();
                 if (attr.Target != null)
@@ -341,6 +344,7 @@ namespace SPAGS
                 }
                 parameters.Add(SimpleAssignValue());
                 func = attr.TheAttribute.Setter;
+                varargs = null;
                 return true;
             }
             public Expression SimpleAssignValue()
@@ -401,11 +405,19 @@ namespace SPAGS
             {
                 Function func;
                 List<Expression> parameters;
-                if (TryGetSimpleCall(out func, out parameters))
+                List<Expression> varargs;
+                if (TryGetSimpleCall(out func, out parameters, out varargs))
                 {
                     foreach (Expression param in parameters)
                     {
                         yield return param;
+                    }
+                    if (varargs != null)
+                    {
+                        foreach (Expression vararg in varargs)
+                        {
+                            yield return vararg;
+                        }
                     }
                 }
                 else
@@ -475,9 +487,12 @@ namespace SPAGS
             {
                 CallExpression.WriteTo(output);
             }
-            public override bool TryGetSimpleCall(out Function func, out List<Expression> parameters)
+            public override bool TryGetSimpleCall(
+                out Function func,
+                out List<Expression> parameters,
+                out List<Expression> varargs)
             {
-                return CallExpression.TryGetSimpleCall(out func, out parameters);
+                return CallExpression.TryGetSimpleCall(out func, out parameters, out varargs);
             }
             public override IEnumerable<CodeUnit> YieldChildCodeUnits()
             {

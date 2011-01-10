@@ -121,7 +121,9 @@ namespace SPAGS
             }
             public Function Function;
             public int StackParams;
+            public int StackVarargs;
             public List<Expression> DirectParams;
+            public List<Expression> DirectVarargs;
             public bool IgnoreReturnValue;
             public override FlatStatementType FlatStatementType
             {
@@ -464,11 +466,13 @@ namespace SPAGS
                     {
                         Function func;
                         List<Expression> fparams;
-                        if (stmt.TryGetSimpleCall(out func, out fparams))
+                        List<Expression> varargs;
+                        if (stmt.TryGetSimpleCall(out func, out fparams, out varargs))
                         {
                             FlatStatement.Begin begin = new FlatStatement.Begin(true);
                             begin.Function = func;
                             begin.DirectParams = fparams;
+                            begin.DirectVarargs = varargs;
                             if (begin.NonChangingParams())
                             {
                                 output.Insert(output.Count - 2, begin);
@@ -484,9 +488,10 @@ namespace SPAGS
 
             Function callFunc;
             List<Expression> callParams;
-            if (stmt.TryGetSimpleCall(out callFunc, out callParams))
+            List<Expression> callVarargs;
+            if (stmt.TryGetSimpleCall(out callFunc, out callParams, out callVarargs))
             {
-                Call(callFunc, callParams, true);
+                Call(callFunc, callParams, callVarargs, true);
                 return;
             }
             switch (stmt.Type)
@@ -600,9 +605,9 @@ namespace SPAGS
                         {
                             int moveStart;
                             Statement.Block elseBlock = new Statement.Block(new NameDictionary());
-                            Statement.If theIf =new Statement.If(
+                            Statement.If theIf = new Statement.If(
                                 Pop(conditional.IfThisIsTrue.GetValueType()),
-                                conditional.ThenDoThis, 
+                                conditional.ThenDoThis,
                                 elseBlock);
                             output.Add(theIf);
                             FlatStatement.EntryPoint endPoint = null;
@@ -693,30 +698,32 @@ namespace SPAGS
             if (stackPushStack.Count > 0) return PopExpression();
             return new FlatExpression.StackPop(vtype);
         }
-        void Call(Function func, List<Expression> parameters, bool ignoreReturnValue)
+        void Call(Function func, List<Expression> parameters, List<Expression> varargs, bool ignoreReturnValue)
         {
             FlushStackPushStack();
             foreach (Expression param in parameters)
             {
                 Expression(param);
             }
-            FunctionData fdata = UserData<Function, FunctionData>.Get(func);
-            if (!fdata.Blocking)
+            if (varargs != null)
             {
-                Expression.Call callExpr = new Expression.Call(new Expression.Function(func), new List<Expression>());
-                if (ignoreReturnValue)
+                foreach (Expression vararg in varargs)
                 {
-                    output.Add(new Statement.Call(callExpr));
-                    return;
-                }
-                else
-                {
-                    stackPushStack.Push(callExpr);
-                    return;
+                    Expression(vararg);
                 }
             }
+            FunctionData fdata = UserData<Function, FunctionData>.Get(func);
             FlatStatement.Begin begin = new FlatStatement.Begin(ignoreReturnValue);
             begin.Function = func;
+            if (varargs != null)
+            {
+                begin.StackVarargs = (parameters.Count + varargs.Count) - stackPushStack.Count;
+                begin.DirectVarargs = new List<Expression>();
+                for (int i = 0; i < (parameters.Count + varargs.Count) - begin.StackVarargs; i++)
+                {
+                    begin.DirectVarargs.Insert(0, PopExpression());
+                }
+            }
             begin.StackParams = parameters.Count - stackPushStack.Count;
             begin.DirectParams = new List<Expression>();
             for (int i = 0; i < parameters.Count - begin.StackParams; i++)
@@ -752,9 +759,10 @@ namespace SPAGS
 
             Function callFunc;
             List<Expression> callParams;
-            if (expr.TryGetSimpleCall(out callFunc, out callParams))
+            List<Expression> varargs;
+            if (expr.TryGetSimpleCall(out callFunc, out callParams, out varargs))
             {
-                Call(callFunc, callParams, false);
+                Call(callFunc, callParams, varargs, false);
                 return;
             }
             switch (expr.Type)
