@@ -238,26 +238,27 @@ namespace SPAGS
                 {
                     Method method = (Method)CallingOn;
                     func = method.TheMethod.Function;
-                    if (method.Target != null) parameters.Insert(0, method.Target);
+                    if (method.Target != null) parameters.Add(method.Target);
                 }
                 else
                 {
-                    throw new Exception("Call on " + CallingOn.Type);
+                    throw new Exception("invalid call on " + CallingOn.Type);
                 }
                 int i;
-                for (i = 0; i < func.Signature.Parameters.Count; i++)
+                int off = parameters.Count;
+                for (i = 0; i < func.Signature.Parameters.Count - off; i++)
                 {
                     if (i < Parameters.Count)
                     {
                         parameters.Add(Parameters[i]);
                     }
-                    else if (func.Signature.Parameters[i].DefaultValue != null)
+                    else if (func.Signature.Parameters[i + off].DefaultValue != null)
                     {
-                        parameters.Add(func.Signature.Parameters[i].DefaultValue);
+                        parameters.Add(func.Signature.Parameters[i + off].DefaultValue);
                     }
                     else
                     {
-                        parameters.Add(func.Signature.Parameters[i].Type.CreateDefaultValueExpression());
+                        parameters.Add(func.Signature.Parameters[i + off].Type.CreateDefaultValueExpression());
                     }
                 }
                 if (i < Parameters.Count)
