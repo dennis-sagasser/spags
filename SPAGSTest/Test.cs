@@ -19,14 +19,14 @@ namespace SPAGS
         const string COMMAND_DUMP_SCRIPTS = "DumpScripts";
         const string COMMAND_JAVASCRIPT = "Javascript";
         const string DUMP_FILENAME = "scripts_dump.txt";
-        const string JS_FILENAME = "scripts_dump.js";
+        const string JS_FILENAME = "Export/globalScripts.js";
 
         IAGSEditor _editor;
 
         public TestPlugin(IAGSEditor editor)
         {
             _editor = editor;
-
+            
             _editor.GUIController.AddMenu(this, MENU_SPAGS, "SPAGS", _editor.GUIController.FileMenuID);
             MenuCommands newCommands = new MenuCommands(MENU_SPAGS);
             newCommands.Commands.Add(new MenuCommand(COMMAND_DUMP_SCRIPTS, "Dump Scripts"));
@@ -82,6 +82,11 @@ namespace SPAGS
                     try
                     {
                         string path = Path.Combine(_editor.CurrentGame.DirectoryPath, JS_FILENAME);
+                        string dir = Path.GetDirectoryName(path);
+                        if (!Directory.Exists(dir))
+                        {
+                            Directory.CreateDirectory(dir);
+                        }
                         ScriptCollection scripts = new ScriptCollection(_editor.Version);
                         scripts.SetStandardConstants(_editor.CurrentGame.Settings);
                         scripts.AddStandardHeaders(_editor);
