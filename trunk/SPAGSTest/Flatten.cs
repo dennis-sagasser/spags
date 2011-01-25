@@ -342,7 +342,7 @@ namespace SPAGS
                     {
                         value = ((Statement.Return)stmt).Value;
                     }
-                    if (output[i - 1] is FlatStatement.EntryPoint && value.IsConstant())
+                    if (output[i - 1] is FlatStatement.EntryPoint && (value == null || value.IsConstant()))
                     {
                         output.RemoveAt(i);
                         while (i > 0 && output[i - 1] is FlatStatement.EntryPoint)
@@ -700,10 +700,19 @@ namespace SPAGS
         }
         void Call(Function func, List<Expression> parameters, List<Expression> varargs, bool ignoreReturnValue)
         {
+            FunctionData fdata = UserData<Function, FunctionData>.Get(func);
+            FlatStatement.Begin begin = new FlatStatement.Begin(ignoreReturnValue);
+            begin.Function = func;
             FlushStackPushStack();
             foreach (Expression param in parameters)
             {
                 Expression(param);
+            }
+            begin.StackParams = parameters.Count - stackPushStack.Count;
+            begin.DirectParams = new List<Expression>();
+            for (int i = 0; i < parameters.Count - begin.StackParams; i++)
+            {
+                begin.DirectParams.Insert(0, PopExpression());
             }
             if (varargs != null)
             {
@@ -711,24 +720,12 @@ namespace SPAGS
                 {
                     Expression(vararg);
                 }
-            }
-            FunctionData fdata = UserData<Function, FunctionData>.Get(func);
-            FlatStatement.Begin begin = new FlatStatement.Begin(ignoreReturnValue);
-            begin.Function = func;
-            if (varargs != null)
-            {
-                begin.StackVarargs = (parameters.Count + varargs.Count) - stackPushStack.Count;
+                begin.StackVarargs = varargs.Count - stackPushStack.Count;
                 begin.DirectVarargs = new List<Expression>();
-                for (int i = 0; i < (parameters.Count + varargs.Count) - begin.StackVarargs; i++)
+                for (int i = 0; i < (varargs.Count - begin.StackVarargs); i++)
                 {
                     begin.DirectVarargs.Insert(0, PopExpression());
                 }
-            }
-            begin.StackParams = parameters.Count - stackPushStack.Count;
-            begin.DirectParams = new List<Expression>();
-            for (int i = 0; i < parameters.Count - begin.StackParams; i++)
-            {
-                begin.DirectParams.Insert(0, PopExpression());
             }
             if (ignoreReturnValue && output.Count >= 3)
             {

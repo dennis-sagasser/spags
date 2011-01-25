@@ -9,6 +9,9 @@ namespace SPAGS
 {
     public partial class TestPlugin : IEditorComponent, IAGSEditorPlugin
     {
+        Dictionary<Function, List<CodeUnit>> callSites;
+        Dictionary<Function, List<Function>> calledBy;
+
         void WriteJavascripts(ScriptCollection scripts, TextWriter output, string guid)
         {
             usedWords = new Dictionary<string,bool>();
@@ -38,167 +41,341 @@ namespace SPAGS
                 list.Add(scripts.CompileRoomScript(_editor, unloadedRoom.Number));
             }
 
-            Dictionary<Function,List<CodeUnit>> callSites = new Dictionary<Function,List<CodeUnit>>();
-            Dictionary<Function,List<Function>> calledBy = new Dictionary<Function,List<Function>>();
+            Function gameStart = GetHandler(list, "game_start", "gameStart");
+            Function onKeyPress = GetHandler(list, "on_key_press", "onKeyPress", new ParameterDef("keycode", ValueType.Int, null));
+            Function onMouseClick = GetHandler(list, "on_mouse_click", "onMouseClick", new ParameterDef("button", ValueType.Int, null));
+
+            callSites = new Dictionary<Function, List<CodeUnit>>();
+            calledBy = new Dictionary<Function, List<Function>>();
+
             foreach (Script script in list)
             {
                 foreach (Function func in script.DefinedFunctions)
                 {
-                    foreach (CodeUnit codeUnit in func.Body.YieldChildCodeUnitsRecursive())
-                    {
-                        Function f;
-                        List<Expression> parameters;
-                        List<Expression> varargs;
-                        if (codeUnit.TryGetSimpleCall(out f, out parameters, out varargs))
-                        {
-                            List<CodeUnit> callSitesList;
-                            List<Function> calledByList;
-                            if (!callSites.TryGetValue(f, out callSitesList))
-                            {
-                                callSitesList = new List<CodeUnit>();
-                                callSites[f] = callSitesList;
-                            }
-                            if (!calledBy.TryGetValue(f, out calledByList))
-                            {
-                                calledByList = new List<Function>();
-                                calledBy[f] = calledByList;
-                            }
-                            callSitesList.Add(codeUnit);
-                            if (!calledByList.Contains(func))
-                            {
-                                calledByList.Add(func);
-                            }
-                        }
-                    }
+                    PreprocessBlocking(func);
                 }
             }
+            PreprocessBlocking(gameStart);
+            PreprocessBlocking(onKeyPress);
+            PreprocessBlocking(onMouseClick);
             foreach (Function f in calledBy.Keys)
             {
-                if (f.Body != null)
-                {
-                    continue;
-                }
-                List<Function> calledByList = calledBy[f];
-                List<CodeUnit> callSitesList = callSites[f];
-                switch (f.Name)
-                {
-                    case "Game::InputBox":
-                    case "Display":
-                    case "DisplayAt":
-                    case "DisplayMessage":
-                    case "DisplayMessageAtY":
-                    case "DisplayTopBar":
-                    case "DisplayMessageBar":
-                    case "ProcessClick":
-                    case "QuitGame":
-                    case "AbortGame":
-                    case "RestartGame":
-                    case "InputBox":
-                    case "InventoryScreen":
-                    case "RunObjectInteraction":
-                    case "AnimateObject":
-                    case "AnimateObjectEx":
-                    case "MoveObject":
-                    case "MoveObjectDirect":
-                    case "RunCharacterInteraction":
-                    case "DisplaySpeech":
-                    case "DisplayThought":
-                    case "AnimateCharacter":
-                    case "AnimateCharacterEx":
-                    case "MoveCharacter":
-                    case "MoveCharacterDirect":
-                    case "MoveCharacterPath":
-                    case "MoveCharacterStraight":
-                    case "MoveCharacterToHotspot":
-                    case "MoveCharacterToObject":
-                    case "MoveCharacterBlocking":
-                    case "FaceCharacter":
-                    case "FaceLocation":
-                    case "RunHotspotInteraction":
-                    case "RunRegionInteraction":
-                    case "RunInventoryInteraction":
-                    case "InventoryItem::RunInteraction":
-                    case "FadeIn":
-                    case "FadeOut":
-                    case "ShakeScreen":
-                    case "PlayFlic":
-                    case "PlayVideo":
-                    case "Wait":
-                    case "WaitKey":
-                    case "WaitMouseKey":
-                    case "Hotspot::RunInteraction":
-                    case "Region::RunInteraction":
-                    case "Dialog::DisplayOptions":
-                    case "Object::Animate":
-                    case "Object::Move":
-                    case "Object::RunInteraction":
-                    case "Character::Animate":
-                    case "Character::FaceCharacter":
-                    case "Character::FaceLocation":
-                    case "Character::FaceObject":
-                    case "Character::Move":
-                    case "Character::RunInteraction":
-                    case "Character::Say":
-                    case "Character::SayAt":
-                    case "Character::Think":
-                    case "Character::Walk":
-                    case "Character::WalkStraight":
-                        break;
-                    default:
-                        continue;
-                }
-                FunctionData fdata = UserData<Function, FunctionData>.Get(f);
-                fdata.Blocking = true;
-                foreach (CodeUnit callSite in callSitesList)
-                {
-                    CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
-                    cudata.MarkAsBlocked();
-                }
-                calledByList = new List<Function>(calledByList);
-                Dictionary<Function,bool> doneFuncs = new Dictionary<Function,bool>();
-                while (calledByList.Count > 0)
-                {
-                    Function f2 = calledByList[0];
-                    calledByList.RemoveAt(0);
-                    if (doneFuncs.ContainsKey(f2)) continue;
-                    doneFuncs[f2] = true;
-                    FunctionData f2data = UserData<Function,FunctionData>.Get(f2);
-                    if (callSites.ContainsKey(f2))
-                    {
-                        foreach (CodeUnit callSite in callSites[f2])
-                        {
-                            CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
-                            cudata.MarkAsBlocked();
-                        }
-                    }
-                    if (calledBy.ContainsKey(f2))
-                    {
-                        calledByList.AddRange(calledBy[f2]);
-                    }
-                }
+                ProcessBlocking(f);
             }
 
             output.WriteLine();
-            output.WriteLine("if (typeof ags !== \"undefined\")");
-            output.WriteLine("(function(ags){");
-            output.WriteLine("  var engine, util, games, game, scripts;");
-            output.WriteLine("  engine = ags.engine;");
-            output.WriteLine("  util = ags.util;");
-            output.WriteLine("  games = ags.games;");
-            output.WriteLine("  game = games[\"" + guid + "\"];");
-            output.WriteLine("  scripts = game.scripts;");
+            output.WriteLine(@"if (typeof ags.games[""" + guid + @"""] === 'undefined') {
+    ags.games[""" + guid + @"""] = {};
+}
+ags.games[""" + guid + @"""].GlobalScripts = function(engine) {
+    var game = engine.game;
+    var util = ags.util;
+    var scripts = {};
+    
+    this.scripts = scripts;
+");
+
+            output.Write(@"
+    this.gameStart = ");
+            WriteJavascriptFunction(gameStart, output, 1);
+            output.WriteLine(";");
+
+            output.Write(@"
+    this.onKeyPress = ");
+            WriteJavascriptFunction(onKeyPress, output, 1);
+            output.WriteLine(";");
+
+            output.Write(@"
+    this.onMouseClick = ");
+            WriteJavascriptFunction(onMouseClick, output, 1);
+            output.WriteLine(";");
+
             Indent(output, 1);
             foreach (Script script in list)
             {
                 WriteJavascript(script, output, 1);
             }
-            output.WriteLine("})(ags);");
+            output.WriteLine("};");
             output.WriteLine();
         }
 
         Script currentScript;
         Function currentFunction;
         Dictionary<string, bool> usedWords;
+
+        Function GetHandler(List<Script> scripts, string name, string handlerName, params ParameterDef[] parameters)
+        {
+            ParameterList list = new ParameterList();
+            list.AddRange(parameters);
+            Function func = new Function(handlerName, new ValueType.FunctionSignature(ValueType.Void, list));
+            foreach (ParameterDef pdef in parameters)
+            {
+                func.ParameterVariables.Add(new Parameter(pdef.Name, pdef.Type));
+            }
+            Statement.Block block = new Statement.Block(new NameDictionary());
+            foreach (Script script in scripts)
+            {
+                Function handler;
+                if (script.Namespace.TryGetValue2<Function>(name, out handler))
+                {
+                    List<Expression> parameterExpr = new List<Expression>();
+                    foreach (Variable paramVar in func.ParameterVariables)
+                    {
+                        parameterExpr.Add(new Expression.Variable(paramVar));
+                    }
+                    block.ChildStatements.Add(new Statement.Call(new Expression.Call(new Expression.Function(handler), parameterExpr)));
+                }
+            }
+            func.Body = block;
+            return func;
+        }
+
+        void PreprocessBlocking(Function func)
+        {
+            foreach (CodeUnit codeUnit in func.Body.YieldChildCodeUnitsRecursive())
+            {
+                Function f;
+                List<Expression> parameters;
+                List<Expression> varargs;
+                if (codeUnit.TryGetSimpleCall(out f, out parameters, out varargs))
+                {
+                    List<CodeUnit> callSitesList;
+                    List<Function> calledByList;
+                    if (!callSites.TryGetValue(f, out callSitesList))
+                    {
+                        callSitesList = new List<CodeUnit>();
+                        callSites[f] = callSitesList;
+                    }
+                    if (!calledBy.TryGetValue(f, out calledByList))
+                    {
+                        calledByList = new List<Function>();
+                        calledBy[f] = calledByList;
+                    }
+                    callSitesList.Add(codeUnit);
+                    if (!calledByList.Contains(func))
+                    {
+                        calledByList.Add(func);
+                    }
+                }
+            }
+        }
+
+        void ProcessBlocking(Function f)
+        {
+            if (f.Body != null)
+            {
+                return;
+            }
+            List<Function> calledByList = calledBy[f];
+            List<CodeUnit> callSitesList = callSites[f];
+            switch (f.Name)
+            {
+                case "Game::InputBox":
+                case "Display":
+                case "DisplayAt":
+                case "DisplayMessage":
+                case "DisplayMessageAtY":
+                case "DisplayTopBar":
+                case "DisplayMessageBar":
+                case "ProcessClick":
+                case "QuitGame":
+                case "AbortGame":
+                case "RestartGame":
+                case "InputBox":
+                case "InventoryScreen":
+                case "RunObjectInteraction":
+                case "AnimateObject":
+                case "AnimateObjectEx":
+                case "MoveObject":
+                case "MoveObjectDirect":
+                case "RunCharacterInteraction":
+                case "DisplaySpeech":
+                case "DisplayThought":
+                case "AnimateCharacter":
+                case "AnimateCharacterEx":
+                case "MoveCharacter":
+                case "MoveCharacterDirect":
+                case "MoveCharacterPath":
+                case "MoveCharacterStraight":
+                case "MoveCharacterToHotspot":
+                case "MoveCharacterToObject":
+                case "MoveCharacterBlocking":
+                case "FaceCharacter":
+                case "FaceLocation":
+                case "RunHotspotInteraction":
+                case "RunRegionInteraction":
+                case "RunInventoryInteraction":
+                case "InventoryItem::RunInteraction":
+                case "FadeIn":
+                case "FadeOut":
+                case "ShakeScreen":
+                case "PlayFlic":
+                case "PlayVideo":
+                case "Wait":
+                case "WaitKey":
+                case "WaitMouseKey":
+                case "Hotspot::RunInteraction":
+                case "Region::RunInteraction":
+                case "Dialog::DisplayOptions":
+                case "Object::Animate":
+                case "Object::Move":
+                case "Object::RunInteraction":
+                case "Character::Animate":
+                case "Character::FaceCharacter":
+                case "Character::FaceLocation":
+                case "Character::FaceObject":
+                case "Character::Move":
+                case "Character::RunInteraction":
+                case "Character::Say":
+                case "Character::SayAt":
+                case "Character::Think":
+                case "Character::Walk":
+                case "Character::WalkStraight":
+                    break;
+                default:
+                    return;
+            }
+            FunctionData fdata = UserData<Function, FunctionData>.Get(f);
+            fdata.Blocking = true;
+            foreach (CodeUnit callSite in callSitesList)
+            {
+                CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
+                cudata.MarkAsBlocked();
+            }
+            calledByList = new List<Function>(calledByList);
+            Dictionary<Function, bool> doneFuncs = new Dictionary<Function, bool>();
+            while (calledByList.Count > 0)
+            {
+                Function f2 = calledByList[0];
+                calledByList.RemoveAt(0);
+                if (doneFuncs.ContainsKey(f2)) continue;
+                doneFuncs[f2] = true;
+                FunctionData f2data = UserData<Function, FunctionData>.Get(f2);
+                if (callSites.ContainsKey(f2))
+                {
+                    foreach (CodeUnit callSite in callSites[f2])
+                    {
+                        CodeUnitData cudata = UserData<CodeUnit, CodeUnitData>.Get(callSite);
+                        cudata.MarkAsBlocked();
+                    }
+                }
+                if (calledBy.ContainsKey(f2))
+                {
+                    calledByList.AddRange(calledBy[f2]);
+                }
+            }
+        }
+
+        void WriteJavascriptFunction(Function func, TextWriter output, int indent)
+        {
+            currentFunction = func;
+            FunctionData fdata = UserData<Function, FunctionData>.Get(func);
+            fdata.Name = fdata.Name.Replace("::", DOUBLE_COLON_REPLACE);
+            if (usedWords.ContainsKey(fdata.Name)) fdata.Name = "f$" + fdata.Name;
+            if (fdata.Blocking)
+            {
+                output.Write("util.blockingFunction([");
+                for (int i = 0; i < func.ParameterVariables.Count; i++)
+                {
+                    Variable paramVar = func.ParameterVariables[i];
+                    VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
+                    vdef.Blocked = true;
+                    if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
+                    if (i > 0) output.Write(", ");
+                    output.Write("\"" + vdef.Name + "\"");
+                }
+                output.Write("], function(");
+                output.Write("$ctx, $stk, $vars");
+            }
+            else
+            {
+                output.Write("function(");
+                for (int i = 0; i < func.ParameterVariables.Count; i++)
+                {
+                    if (i != 0) output.Write(", ");
+                    Variable paramVar = func.ParameterVariables[i];
+                    VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
+                    if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
+                    output.Write(vdef.Name);
+                }
+            }
+            output.WriteLine(") {");
+            NameDictionary tempUsedNames = new NameDictionary();
+            foreach (Variable var in func.YieldLocalVariables())
+            {
+                if (var is Parameter) continue;
+                LocalVariable localVar = (LocalVariable)var;
+                VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
+                if (UserData<CodeUnit, CodeUnitData>.Get(localVar.OwnerScope).Blocked)
+                {
+                    vdata.Blocked = true;
+                }
+                else
+                {
+                    if (!tempUsedNames.ContainsKey(var.Name)) tempUsedNames.Add(var);
+                }
+            }
+            if (tempUsedNames.Count > 0)
+            {
+                Indent(output, indent + 2);
+                output.Write("var ");
+                bool firstValue = true;
+                foreach (Variable var in tempUsedNames.EachOf<Variable>())
+                {
+                    if (firstValue)
+                    {
+                        firstValue = false;
+                    }
+                    else
+                    {
+                        output.Write(", ");
+                    }
+                    VariableData vdata = UserData<Variable, VariableData>.Get(var);
+                    output.Write(vdata.Name);
+                }
+                output.WriteLine(";");
+            }
+            if (!func.Body.Returns())
+            {
+                if (func.Signature.ReturnType.Category != ValueTypeCategory.Void)
+                {
+                    func.Body.ChildStatements.Add(new Statement.Return(null));
+                }
+                else
+                {
+                    func.Body.ChildStatements.Add(
+                        new Statement.Return(
+                            func.Signature.ReturnType.CreateDefaultValueExpression()));
+                }
+            }
+            if (fdata.Blocking)
+            {
+                Flattener flattener = new Flattener(func);
+                flattener.Go();
+                foreach (Statement stmt in flattener.output)
+                {
+                    Indent(output, indent + 2);
+                    WriteStatementJS(stmt, output, indent + 2);
+                }
+            }
+            else
+            {
+                foreach (Statement stmt in func.Body.ChildStatements)
+                {
+                    Indent(output, indent + 2);
+                    WriteStatementJS(stmt, output, indent + 2);
+                }
+            }
+            if (fdata.Blocking)
+            {
+                output.Write("  })");
+            }
+            else
+            {
+                output.Write("  }");
+            }
+        }
 
         void WriteJavascript(Script script, TextWriter output, int indent)
         {
@@ -280,107 +457,12 @@ namespace SPAGS
             }
             foreach (Function func in script.DefinedFunctions)
             {
-                currentFunction = func;
                 FunctionData fdata = UserData<Function, FunctionData>.Get(func);
                 fdata.Name = fdata.Name.Replace("::", DOUBLE_COLON_REPLACE);
                 if (usedWords.ContainsKey(fdata.Name)) fdata.Name = "f$" + fdata.Name;
-                if (fdata.Blocking)
-                {
-                    output.Write("  \"" + fdata.Name + "\": util.blockingFunction([");
-                    for (int i = 0; i < func.ParameterVariables.Count; i++)
-                    {
-                        Variable paramVar = func.ParameterVariables[i];
-                        VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
-                        vdef.Blocked = true;
-                        if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
-                        if (i > 0) output.Write(", ");
-                        output.Write("\"" + vdef.Name + "\"");
-                    }
-                    output.Write("], function(");
-                    output.Write("$ctx, $stk, $vars");
-                }
-                else
-                {
-                    output.Write("  \"" + fdata.Name + "\": function(");
-                    for (int i = 0; i < func.ParameterVariables.Count; i++)
-                    {
-                        if (i != 0) output.Write(", ");
-                        Variable paramVar = func.ParameterVariables[i];
-                        VariableData vdef = UserData<Variable, VariableData>.Get(paramVar);
-                        if (usedWords.ContainsKey(vdef.Name)) vdef.Name = "p$" + vdef.Name;
-                        output.Write(vdef.Name);
-                    }
-                }
-                output.WriteLine(") {");
-                NameDictionary tempUsedNames = new NameDictionary();
-                foreach (Variable var in func.YieldLocalVariables())
-                {
-                    if (var is Parameter) continue;
-                    LocalVariable localVar = (LocalVariable)var;
-                    VariableData vdata = UserData<Variable, VariableData>.Get(var);
-                    if (usedWords.ContainsKey(vdata.Name)) vdata.Name = "v$" + vdata.Name;
-                    if (UserData<CodeUnit, CodeUnitData>.Get(localVar.OwnerScope).Blocked)
-                    {
-                        vdata.Blocked = true;
-                    }
-                    else
-                    {
-                        if (!tempUsedNames.ContainsKey(var.Name)) tempUsedNames.Add(var);
-                    }
-                }
-                if (tempUsedNames.Count > 0)
-                {
-                    Indent(output, indent + 2);
-                    output.Write("var ");
-                    bool firstValue = true;
-                    foreach (Variable var in tempUsedNames.EachOf<Variable>())
-                    {
-                        if (firstValue)
-                        {
-                            firstValue = false;
-                        }
-                        else
-                        {
-                            output.Write(", ");
-                        }
-                        VariableData vdata = UserData<Variable, VariableData>.Get(var);
-                        output.Write(vdata.Name);
-                    }
-                    output.WriteLine(";");
-                }
-                if (func.Signature.ReturnType.Category != ValueTypeCategory.Void
-                    && !func.Body.Returns())
-                {
-                    func.Body.ChildStatements.Add(
-                        new Statement.Return(
-                            func.Signature.ReturnType.CreateDefaultValueExpression()));
-                }
-                if (fdata.Blocking)
-                {
-                    Flattener flattener = new Flattener(func);
-                    flattener.Go();
-                    foreach (Statement stmt in flattener.output)
-                    {
-                        Indent(output, indent + 2);
-                        WriteStatementJS(stmt, output, indent + 2);
-                    }
-                }
-                else
-                {
-                    foreach (Statement stmt in func.Body.ChildStatements)
-                    {
-                        Indent(output, indent + 2);
-                        WriteStatementJS(stmt, output, indent + 2);
-                    }
-                }
-                if (fdata.Blocking)
-                {
-                    output.WriteLine("  }),");
-                }
-                else
-                {
-                    output.WriteLine("  },");
-                }
+                output.Write("  \"" + fdata.Name + "\": ");
+                WriteJavascriptFunction(func, output, indent);
+                output.WriteLine(",");
             }
 
             output.WriteLine("  \"$serialize\": function(slzr) {");
@@ -423,94 +505,44 @@ namespace SPAGS
 
         void WriteStatementJS(Statement stmt, TextWriter output, int indent)
         {
-            switch (stmt.Type)
+            Function callFunc;
+            List<Expression> callParams;
+            List<Expression> callVarargs;
+            if (stmt.TryGetSimpleCall(out callFunc, out callParams, out callVarargs))
             {
-                case StatementType.Call:
-                    Statement.Call callStmt = (Statement.Call)stmt;
-                    WriteExpressionJS(callStmt.CallExpression, output, indent);
-                    output.WriteLine(";");
-                    break;
+                WriteCallJS(callFunc, callParams, callVarargs, output, indent);
+                output.WriteLine(";");
+            }
+            else switch (stmt.Type)
+            {
                 case StatementType.Assign:
                     Statement.Assign assign = (Statement.Assign)stmt;
-
-                    Expression.Attribute attr = assign.Target as Expression.Attribute;
-                    Expression.ArrayIndex index = assign.Target as Expression.ArrayIndex;
-                    if (index != null)
+                    WriteExpressionJS(assign.Target, output, indent + 1);
+                    output.Write(" = ");
+                    Expression newValue;
+                    switch (assign.AssignType)
                     {
-                        attr = index.Target as Expression.Attribute;
+                        case TokenType.Assign:
+                            newValue = assign.Value;
+                            break;
+                        case TokenType.Increment:
+                            newValue = new Expression.BinaryOperator(Token.Add, assign.Target, new Expression.IntegerLiteral(1));
+                            break;
+                        case TokenType.Decrement:
+                            newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, new Expression.IntegerLiteral(1));
+                            break;
+                        case TokenType.AddAssign:
+                            newValue = new Expression.BinaryOperator(Token.Add, assign.Target, assign.Value);
+                            break;
+                        case TokenType.SubtractAssign:
+                            newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, assign.Value);
+                            break;
+                        default:
+                            throw new Exception("unrecognised assign token: " + assign.AssignType.ToString());
                     }
-                    if (attr != null)
-                    {
-                        WriteFunctionJS(attr.TheAttribute.Setter, output);
-                        output.Write("(");
-                        if (attr.Target != null)
-                        {
-                            WriteExpressionJS(attr.Target, output, indent);
-                            output.Write(", ");
-                        }
-                        if (index != null)
-                        {
-                            WriteExpressionJS(index.Index, output, indent);
-                            output.Write(", ");
-                        }
-                        Expression newValue;
-                        switch (assign.AssignType)
-                        {
-                            case TokenType.Assign:
-                                newValue = assign.Value;
-                                break;
-                            case TokenType.Increment:
-                                newValue = new Expression.BinaryOperator(
-                                    Token.Add, attr, new Expression.IntegerLiteral(1));
-                                break;
-                            case TokenType.Decrement:
-                                newValue = new Expression.BinaryOperator(
-                                    Token.Subtract, attr, new Expression.IntegerLiteral(1));
-                                break;
-                            case TokenType.AddAssign:
-                                newValue = new Expression.BinaryOperator(
-                                    Token.Add, attr, assign.Value);
-                                break;
-                            case TokenType.SubtractAssign:
-                                newValue = new Expression.BinaryOperator(
-                                    Token.Subtract, attr, assign.Value);
-                                break;
-                            default:
-                                throw new Exception("unrecognised assign token: " + assign.AssignType.ToString());
-                        }
-                        WriteExpressionJS(newValue, output, indent);
-                        output.WriteLine(");");
-                        break;
-                    }
-                    else
-                    {
-                        WriteExpressionJS(assign.Target, output, indent + 1);
-                        output.Write(" = ");
-                        Expression newValue;
-                        switch (assign.AssignType)
-                        {
-                            case TokenType.Assign:
-                                newValue = assign.Value;
-                                break;
-                            case TokenType.Increment:
-                                newValue = new Expression.BinaryOperator(Token.Add, assign.Target, new Expression.IntegerLiteral(1));
-                                break;
-                            case TokenType.Decrement:
-                                newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, new Expression.IntegerLiteral(1));
-                                break;
-                            case TokenType.AddAssign:
-                                newValue = new Expression.BinaryOperator(Token.Add, assign.Target, assign.Value);
-                                break;
-                            case TokenType.SubtractAssign:
-                                newValue = new Expression.BinaryOperator(Token.Subtract, assign.Target, assign.Value);
-                                break;
-                            default:
-                                throw new Exception("unrecognised assign token: " + assign.AssignType.ToString());
-                        }
-                        WriteExpressionJS(newValue, output, indent + 1, assign.Target.GetValueType());
-                        output.WriteLine(";");
-                        break;
-                    }
+                    WriteExpressionJS(newValue, output, indent + 1, assign.Target.GetValueType());
+                    output.WriteLine(";");
+                    break;
                 case StatementType.Block:
                     Statement.Block block = (Statement.Block)stmt;
                     if (block.ChildStatements.Count == 0)
@@ -981,6 +1013,28 @@ namespace SPAGS
 
         const string DOUBLE_COLON_REPLACE = "$$";
 
+        void WriteCallJS(Function callFunc, List<Expression> callParams, List<Expression> callVarargs, TextWriter output, int indent)
+        {
+            WriteFunctionJS(callFunc, output);
+            output.Write("(");
+            for (int i = 0; i < callParams.Count; i++)
+            {
+                if (i > 0) output.Write(", ");
+                WriteExpressionJS(callParams[i], output, indent);
+            }
+            if (callVarargs != null)
+            {
+                output.Write((callParams.Count == 0) ? "[" : ", [");
+                for (int i = 0; i < callVarargs.Count; i++)
+                {
+                    if (i > 0) output.Write(", ");
+                    WriteExpressionJS(callVarargs[i], output, indent);
+                }
+                output.Write("]");
+            }
+            output.Write(")");
+        }
+
         void WriteExpressionJS(Expression expr, TextWriter output, int indent)
         {
             WriteExpressionJS(expr, output, indent, null, false);
@@ -1034,7 +1088,14 @@ namespace SPAGS
                     }
                 }
             }
-            switch (expr.Type)
+            Function callFunc;
+            List<Expression> callParams;
+            List<Expression> callVarargs;
+            if (expr.TryGetSimpleCall(out callFunc, out callParams, out callVarargs))
+            {
+                WriteCallJS(callFunc, callParams, callVarargs, output, indent);
+            }
+            else switch (expr.Type)
             {
                 case ExpressionType.Custom:
                     if (expr is FlatExpression)
@@ -1093,85 +1154,8 @@ namespace SPAGS
                         output.Write("]");
                     }
                     break;
-                case ExpressionType.Attribute:
-                    Expression.Attribute attr = (Expression.Attribute)expr;
-                    WriteFunctionJS(attr.TheAttribute.Getter, output);
-                    if (attr.Target == null)
-                    {
-                        output.Write("()");
-                    }
-                    else
-                    {
-                        output.Write("(");
-                        WriteExpressionJS(attr.Target, output, indent + 1);
-                        output.Write(")");
-                    }
-                    break;
                 case ExpressionType.BinaryOperator:
                     WriteBinaryOperatorJS((Expression.BinaryOperator)expr, output, indent, selfContained);
-                    break;
-                case ExpressionType.Call:
-                    Expression.Call call = (Expression.Call)expr;
-                    Expression.Method callingMethod = call.CallingOn as Expression.Method;
-                    if (callingMethod != null)
-                    {
-                        if (callingMethod.TheMethod.IsStatic)
-                        {
-                            Expression.Call newCall = new Expression.Call(
-                                new Expression.Function(callingMethod.TheMethod.Function),
-                                call.Parameters);
-                            WriteExpressionJS(newCall, output, indent, expectedType);
-                        }
-                        else
-                        {
-                            List<Expression> parameters = new List<Expression>(call.Parameters);
-                            parameters.Insert(0, callingMethod.Target);
-                            Expression.Call newCall = new Expression.Call(
-                                new Expression.Function(callingMethod.TheMethod.Function),
-                                parameters);
-                            WriteExpressionJS(newCall, output, indent, expectedType);
-                        }
-                        break;
-                    }
-                    WriteExpressionJS(call.CallingOn, output, indent + 1);
-                    output.Write("(");
-                    ValueType.FunctionSignature signature = call.CallingOn.GetValueType() as ValueType.FunctionSignature;
-                    if (signature == null)
-                    {
-                        throw new Exception("Calling on a non-callable object: " + call.CallingOn.ToString());
-                    }
-                    int i;
-                    for (i = 0; i < call.Parameters.Count; i++)
-                    {
-                        if (i != 0) output.Write(", ");
-                        if (i < signature.Parameters.Count)
-                        {
-                            WriteExpressionJS(call.Parameters[i], output, indent + 1, signature.Parameters[i].Type);
-                        }
-                        else
-                        {
-                            WriteExpressionJS(call.Parameters[i], output, indent + 1);
-                        }
-                    }
-                    if (i < signature.Parameters.Count)
-                    {
-                        output.Write(", [");
-                        for (; i < signature.Parameters.Count; i++)
-                        {
-                            Expression paramValue = signature.Parameters[i].DefaultValue;
-                            if (paramValue == null)
-                            {
-                                paramValue = signature.Parameters[i].Type.CreateDefaultValueExpression();
-                            }
-                            if (paramValue != null)
-                            {
-                                if (i != 0) output.Write(", ");
-                                WriteExpressionJS(paramValue, output, indent, signature.Parameters[i].Type);
-                            }
-                        }
-                        output.Write("]");
-                    }
-                    output.Write(")");
                     break;
                 case ExpressionType.CharLiteral:
                     Expression.CharLiteral charLiteral = (Expression.CharLiteral)expr;
