@@ -202,7 +202,7 @@ namespace SPAGS
         public static readonly Token BitwiseXor         = new SimpleToken("^", TokenType.BitwiseXor);
 
         public static readonly Token BitwiseLeftShift           = new SimpleToken("<<", TokenType.BitwiseLeftShift);
-        public static readonly Token BitwiseRightShift          = new SimpleToken(">>", TokenType.BitwiseLeftShift);
+        public static readonly Token BitwiseRightShift          = new SimpleToken(">>", TokenType.BitwiseRightShift);
 
         public static readonly Keyword If               = new Keyword("if", TokenType.If);
         public static readonly Keyword While            = new Keyword("while", TokenType.While);
