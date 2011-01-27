@@ -124,12 +124,12 @@ namespace RedHerringFarm
                     }
                 }
 
-                output.WriteValue("playerCharacter", Workarounds.GetPlayerCharacter(editor.CurrentGame).ID);
+                output.WriteValue("playerCharacter", HacksAndKludges.GetPlayerCharacter(editor.CurrentGame).ID);
 
                 // global messages
                 using (output.BeginArray("globalMessages"))
                 {
-                    foreach (string s in Workarounds.GetGlobalMessages(editor.CurrentGame))
+                    foreach (string s in HacksAndKludges.GetGlobalMessages(editor.CurrentGame))
                     {
                         output.WriteValue(s);
                     }
@@ -138,7 +138,7 @@ namespace RedHerringFarm
                 // text parser
                 using (output.BeginObject("textParserWords"))
                 {
-                    foreach (AGS.Types.TextParserWord word in Workarounds.GetTextParser(editor.CurrentGame).Words)
+                    foreach (AGS.Types.TextParserWord word in HacksAndKludges.GetTextParser(editor.CurrentGame).Words)
                     {
                         output.WriteValue(word.Word, word.WordGroup);
                     }
@@ -149,7 +149,7 @@ namespace RedHerringFarm
                 {
                     using (output.BeginArray("definitions"))
                     {
-                        foreach (AGS.Types.CustomPropertySchemaItem item in Workarounds.GetPropertySchema(editor.CurrentGame).PropertyDefinitions)
+                        foreach (AGS.Types.CustomPropertySchemaItem item in HacksAndKludges.GetPropertySchema(editor.CurrentGame).PropertyDefinitions)
                         using (output.BeginObject())
                         {
                             output.WriteValue("appliesToCharacters", item.AppliesToCharacters);
@@ -179,11 +179,11 @@ namespace RedHerringFarm
                 // lip sync
                 using (output.BeginObject("lipSync"))
                 {
-                    output.WriteValue("type", EnumName(Workarounds.GetLipSync(editor.CurrentGame).Type));
-                    output.WriteValue("defaultFrame", Workarounds.GetLipSync(editor.CurrentGame).DefaultFrame);
+                    output.WriteValue("type", EnumName(HacksAndKludges.GetLipSync(editor.CurrentGame).Type));
+                    output.WriteValue("defaultFrame", HacksAndKludges.GetLipSync(editor.CurrentGame).DefaultFrame);
                     using (output.BeginArray("charactersPerFrame"))
                     {
-                        foreach (string cpf in Workarounds.GetLipSync(editor.CurrentGame).CharactersPerFrame)
+                        foreach (string cpf in HacksAndKludges.GetLipSync(editor.CurrentGame).CharactersPerFrame)
                         {
                             output.WriteValue(cpf);
                         }
@@ -193,7 +193,7 @@ namespace RedHerringFarm
                 // old interaction variables
                 using (output.BeginArray("oldInteractionVariables"))
                 {
-                    foreach (AGS.Types.OldInteractionVariable old in Workarounds.GetOldInteractionVariables(editor.CurrentGame))
+                    foreach (AGS.Types.OldInteractionVariable old in HacksAndKludges.GetOldInteractionVariables(editor.CurrentGame))
                     using (output.BeginObject())
                     {
                         output.WriteValue("scriptName", old.ScriptName);

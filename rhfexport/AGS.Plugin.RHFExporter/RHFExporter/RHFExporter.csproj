@@ -37,10 +37,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\SPAGS\SVN\SPAGS\bin\Release\AGS.Types.dll</HintPath>
     </Reference>
-    <Reference Include="SPAGS, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\SPAGS\SVN\SPAGS\bin\Release\SPAGS.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -60,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExporterPlugin.Bitmaps.cs" />
+    <Compile Include="ExporterPlugin.GameScripts.cs" />
     <Compile Include="ExporterPlugin.ImageSheets.cs" />
     <Compile Include="ExporterPlugin.RoomBackgrounds.cs" />
     <Compile Include="ExporterPlugin.RoomDef.cs" />
@@ -83,6 +80,16 @@
     <Compile Include="ImageSheets\HashUtil.cs" />
     <Compile Include="ImageSheets\ImageSheet.cs" />
     <Compile Include="ImageSheets\ImageSheetEntry.cs" />
+    <Compile Include="JavaScriptGeneration\Block.cs" />
+    <Compile Include="JavaScriptGeneration\CodeFilter.cs" />
+    <Compile Include="JavaScriptGeneration\Expression.cs" />
+    <Compile Include="JavaScriptGeneration\ScopedBlock.cs" />
+    <Compile Include="JavaScriptGeneration\Script.cs" />
+    <Compile Include="JavaScriptGeneration\SPAGSConverter.cs" />
+    <Compile Include="JavaScriptGeneration\Statement.cs" />
+    <Compile Include="JavaScriptGeneration\Util.cs" />
+    <Compile Include="JavaScriptGeneration\Variable.cs" />
+    <Compile Include="JavaScriptGeneration\Writer.cs" />
     <Compile Include="QuadTreeIzer\QuadTreeIzer.cs" />
     <Compile Include="DataFormats\WfnFont.cs" />
     <Compile Include="SettingsPanel.cs">
@@ -92,7 +99,7 @@
       <DependentUpon>SettingsPanel.cs</DependentUpon>
     </Compile>
     <Compile Include="TaskManaging\TaskManager.cs" />
-    <Compile Include="Workarounds.cs" />
+    <Compile Include="HacksAndKludges.cs" />
     <Compile Include="DelegatedStream.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -102,6 +109,12 @@
     <EmbeddedResource Include="SettingsPanel.resx">
       <DependentUpon>SettingsPanel.cs</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\SPAGS\SVN\SPAGS\SPAGS.csproj">
+      <Project>{5482E0F4-7106-458A-A1C0-2E74C704837D}</Project>
+      <Name>SPAGS</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

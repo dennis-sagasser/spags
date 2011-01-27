@@ -32,6 +32,8 @@ namespace RedHerringFarm
         public const string IMAGE_SHEET_FILENAME = "imageSheet{0}.png";
         public const string MAIN_ICON_FILENAME = "game.png";
         public const string SETUP_ICON_FILENAME = "setup.png";
+        public const string GLOBAL_SCRIPTS_FILENAME = "globalScripts.js";
+        public const string ROOM_SCRIPT_FILENAME = "room{0}script.js";
 
         private AGS.Types.IAGSEditor editor;
 
@@ -70,6 +72,7 @@ namespace RedHerringFarm
         }
 
         public const string TASK_EXPORT_MAIN_GAME_DATA = "Exporting main game data...";
+        public const string TASK_EXPORT_GLOBAL_SCRIPTS = "Exporting global scripts...";
         public const string TASK_EXPORT_CURRENT_ROOM_DATA = "Exporting current room data...";
         public const string TASK_PREPARE_IMAGE_SHEETS = "Preparing image sheets...";
         public const string TASK_PREPARE_BITMAP_EXPORT = "Preparing bitmap export...";
@@ -83,6 +86,15 @@ namespace RedHerringFarm
 
         public void ExportMainGameData()
         {
+            if (!HacksAndKludges.AreDialogScriptsCached(editor))
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Please build the project properly first.",
+                    "Build Required",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
             ExportProgress progressDialog = new ExportProgress();
             progressDialog.ExportBackgroundWorker.DoWork +=
                 delegate(object sender, DoWorkEventArgs e)
@@ -96,6 +108,7 @@ namespace RedHerringFarm
                         progressDialog.SetTaskManager(exportTask);
 
                         TaskManager.Expect(TASK_PREPARE_BITMAP_EXPORT);
+                        TaskManager.Expect(TASK_EXPORT_GLOBAL_SCRIPTS);
                         TaskManager.Expect(TASK_PREPARE_IMAGE_SHEETS);
                         TaskManager.Expect(TASK_EXPORT_GAME_DEF);
                         TaskManager.Expect(TASK_EXPORT_ICONS);
@@ -114,6 +127,10 @@ namespace RedHerringFarm
                         using (TaskManager.Start(TASK_EXPORT_GAME_DEF))
                         {
                             ExportGameDef();
+                        }
+                        using (TaskManager.Start(TASK_EXPORT_GLOBAL_SCRIPTS))
+                        {
+                            ExportGlobalScripts();
                         }
                         using (TaskManager.Start(TASK_EXPORT_ICONS, true))
                         {
@@ -136,7 +153,7 @@ namespace RedHerringFarm
                         }
                     }
                 };
-            progressDialog.ShowDialog(Workarounds.GetMainWindow());
+            progressDialog.ShowDialog(HacksAndKludges.GetMainWindow());
         }
 
         public void ExportCurrentRoomData()
@@ -177,7 +194,7 @@ namespace RedHerringFarm
                     }
 
                 };
-            progressDialog.ShowDialog(Workarounds.GetMainWindow());
+            progressDialog.ShowDialog(HacksAndKludges.GetMainWindow());
         }
 
         public void CommandClick(string command)
@@ -195,11 +212,11 @@ namespace RedHerringFarm
                     else
                     {
                         System.Windows.Forms.MessageBox.Show(
-                            Workarounds.GetMainWindow(),
+                            HacksAndKludges.GetMainWindow(),
                             "You must be editing a room first.",
                             "No Room Loaded",
                             System.Windows.Forms.MessageBoxButtons.OK,
-                            System.Windows.Forms.MessageBoxIcon.Error);
+                            System.Windows.Forms.MessageBoxIcon.Warning);
                     }
                     break;
                 case COMMAND_SETTINGS_ID:

@@ -14,7 +14,7 @@ namespace RedHerringFarm
         {
             spriteImageSheetEntries = new List<SpriteImageSheetEntry>();
             ImageSheet nonAlphaSpriteImageSheet = new ImageSheet(2880, 2880, 0, 0);
-            nonAlphaSpriteImageSheet.ClearColor = Workarounds.GetTransparencyColor();
+            nonAlphaSpriteImageSheet.ClearColor = HacksAndKludges.GetTransparencyColor();
             nonAlphaSpriteImageSheet.MakeTransparent = true;
             ImageSheet alphaSpriteImageSheet = new ImageSheet(2880, 2880, 0, 0);
             foreach (AGS.Types.Sprite sprite in GetAllSprites())

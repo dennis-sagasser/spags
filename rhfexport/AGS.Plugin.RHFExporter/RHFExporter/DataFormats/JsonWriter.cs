@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using JS = RedHerringFarm.JavaScriptGeneration;
 
 namespace RedHerringFarm
 {
@@ -158,7 +159,7 @@ namespace RedHerringFarm
             }
             else
             {
-                output.Write(JsonUtil.EncodeString(str));
+                output.Write(JS.Util.EncodeString(str));
             }
         }
 
@@ -330,7 +331,7 @@ namespace RedHerringFarm
                 }
                 if (usedKeys.ContainsKey(key))
                 {
-                    throw new MalformedJsonException("Malformed JSON: Duplicate Object Key " + JsonUtil.EncodeString(key));
+                    throw new MalformedJsonException("Malformed JSON: Duplicate Object Key " + JS.Util.EncodeString(key));
                 }
                 usedKeys.Add(key, true);
                 if (firstValue)
@@ -344,11 +345,11 @@ namespace RedHerringFarm
                 j_output.WriteIndent();
                 if (j_output.settings.NiceFormatting)
                 {
-                    output.Write(JsonUtil.EncodeString(key) + ": ");
+                    output.Write(JS.Util.EncodeString(key) + ": ");
                 }
                 else
                 {
-                    output.Write(JsonUtil.EncodeString(key) + ":");
+                    output.Write(JS.Util.EncodeString(key) + ":");
                 }
                 key = null;
             }
@@ -361,30 +362,6 @@ namespace RedHerringFarm
                 }
                 output.Write('}');
             }
-        }
-    }
-    public static class JsonUtil
-    {
-        private static Regex JsonStringEscapables = new Regex(@"[\x00-\x1F\x7F""/\\]", RegexOptions.Compiled);
-
-        private static string JsonStringEscape(Match match)
-        {
-            char c;
-            switch (c = match.Value[0])
-            {
-                case '\r': return "\\r";
-                case '\n': return "\\n";
-                case '\t': return "\\t";
-                case '\\':
-                case '"':
-                case '/': return "\\" + c;
-                default: return String.Format("\\u{0:X4}", (uint)c);
-            }
-        }
-
-        public static string EncodeString(string str)
-        {
-            return String.Format("\"{0}\"", JsonStringEscapables.Replace(str, JsonStringEscape));
         }
     }
 }

@@ -115,7 +115,7 @@ namespace RedHerringFarm
             if (e.Error != null)
             {
                 MessageBox.Show(
-                    Workarounds.GetMainWindow(),
+                    HacksAndKludges.GetMainWindow(),
                     "Export failed!\r\n\r\n" + e.Error.ToString(),
                     "Error",
                     MessageBoxButtons.OK,
@@ -154,7 +154,7 @@ namespace RedHerringFarm
         {
             SuccessTimer.Enabled = false;
             MessageBox.Show(
-                Workarounds.GetMainWindow(),
+                HacksAndKludges.GetMainWindow(),
                 "Export completed successfully.",
                 "Success",
                 MessageBoxButtons.OK,
