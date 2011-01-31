@@ -15,8 +15,8 @@ namespace RedHerringFarm
         List<AgsFont> fonts;
         private void PrepareFontImageSheets()
         {
-            ImageSheet outlineMonoCharSheet = new ImageSheet(2880, 2880, 2, 1);
-            ImageSheet normalMonoCharSheet = new ImageSheet(2880, 2880, 0, 0);
+            ImageSheet outlineMonoCharSheet = new ImageSheet(settings.MaxImageSheetWidth, settings.MaxImageSheetHeight, 2, 1);
+            ImageSheet normalMonoCharSheet = new ImageSheet(settings.MaxImageSheetWidth, settings.MaxImageSheetHeight, 0, 0);
 
             outlineMonoCharSheet.ClearColor = Color.Black;
             outlineMonoCharSheet.MakeTransparent = true;
@@ -104,7 +104,7 @@ namespace RedHerringFarm
         }
         private void WriteFontCharJson(JsonWriter output, string key, AgsFontChar c)
         {
-            if (c == null)
+            if (c == null || c.Width == 0 || c.Height == 0)
             {
                 output.WriteNull(key);
                 return;
@@ -118,14 +118,6 @@ namespace RedHerringFarm
                     if (c.Advance != c.Width)
                     {
                         output.WriteValue("a", c.Advance);
-                    }
-                    if (c.XOffset != 0)
-                    {
-                        output.WriteValue("xo", c.XOffset);
-                    }
-                    if (c.YOffset != 0)
-                    {
-                        output.WriteValue("yo", c.YOffset);
                     }
                 }
             }
@@ -160,187 +152,165 @@ namespace RedHerringFarm
         }
     }
 
-    internal abstract class AgsFontChar : ImageSheetEntry
+    internal class AgsFontChar : ImageSheetEntry
     {
-        public int XOffset;
-        public int YOffset;
         public int Advance;
-        internal class BitmapChar : AgsFontChar
+        internal AgsFontChar(Bitmap bmp, int advance, int xOffset, int yOffset)
         {
-            internal BitmapChar(Bitmap bmp, int advance, int xOffset, int yOffset)
+            this.bmp = bmp;
+            this.Advance = advance;
+            this.paddingLeft = xOffset;
+            this.paddingTop = yOffset;
+            if (bmp == null)
             {
-                this.bmp = bmp;
-                this.Advance = advance;
-                this.XOffset = xOffset;
-                this.YOffset = yOffset;
-                if (bmp == null)
-                {
-                    return;
-                }
+                return;
+            }
 
-                int removeBottomRows, removeTopRows, removeLeftRows, removeRightRows;
-                removeBottomRows = removeTopRows = removeLeftRows = removeRightRows = 0;
-                for (int y = bmp.Height - 1; y >= 0; y--)
-                {
-                    bool rowUsed = false;
-                    for (int x = 0; x < bmp.Width; x++)
-                    {
-                        if (bmp.GetPixel(x, y).R >= 128)
-                        {
-                            rowUsed = true;
-                            break;
-                        }
-                    }
-                    if (rowUsed) break;
-                    removeBottomRows++;
-                }
-                for (int y = 0; y < bmp.Height; y++)
-                {
-                    bool rowUsed = false;
-                    for (int x = 0; x < bmp.Width; x++)
-                    {
-                        if (bmp.GetPixel(x, y).R >= 128)
-                        {
-                            rowUsed = true;
-                            break;
-                        }
-                    }
-                    if (rowUsed) break;
-                    removeTopRows++;
-                }
+            int removeBottomRows, removeTopRows, removeLeftRows, removeRightRows;
+            removeBottomRows = removeTopRows = removeLeftRows = removeRightRows = 0;
+            for (int y = bmp.Height - 1; y >= 0; y--)
+            {
+                bool rowUsed = false;
                 for (int x = 0; x < bmp.Width; x++)
                 {
-                    bool colUsed = false;
-                    for (int y = 0; y < bmp.Height; y++)
+                    if (bmp.GetPixel(x, y).R >= 128)
                     {
-                        if (bmp.GetPixel(x, y).R >= 128)
-                        {
-                            colUsed = true;
-                            break;
-                        }
-                    }
-                    if (colUsed) break;
-                    removeLeftRows++;
-                }
-                for (int x = bmp.Width - 1; x >= 0; x--)
-                {
-                    bool colUsed = false;
-                    for (int y = 0; y < bmp.Height; y++)
-                    {
-                        if (bmp.GetPixel(x, y).R >= 128)
-                        {
-                            colUsed = true;
-                            break;
-                        }
-                    }
-                    if (colUsed) break;
-                    removeRightRows++;
-                }
-                XOffset += removeLeftRows;
-                YOffset += removeTopRows;
-                if (removeLeftRows == bmp.Width || removeTopRows == bmp.Height)
-                {
-                    this.bmp = null;
-                }
-                else if ((removeLeftRows + removeRightRows + removeTopRows + removeBottomRows) > 0)
-                {
-                    Bitmap newBitmap = new Bitmap(
-                        bmp.Width - removeLeftRows - removeRightRows,
-                        bmp.Height - removeTopRows - removeBottomRows,
-                        bmp.PixelFormat);
-                    BitmapData locked = bmp.LockBits(
-                        new Rectangle(removeLeftRows, removeTopRows, newBitmap.Width, newBitmap.Height),
-                        ImageLockMode.ReadOnly,
-                        bmp.PixelFormat);
-                    byte[] data = new byte[locked.Stride * locked.Height];
-                    Marshal.Copy(locked.Scan0, data, 0, data.Length);
-                    BitmapData locked2 = newBitmap.LockBits(
-                        new Rectangle(0, 0, newBitmap.Width, newBitmap.Height),
-                        ImageLockMode.WriteOnly,
-                        newBitmap.PixelFormat);
-                    if (locked2.Stride != locked.Stride)
-                    {
-                        byte[] newData = new byte[locked2.Stride * locked2.Height];
-                        for (int y = 0; y < locked.Height; y++)
-                        {
-                            Buffer.BlockCopy(
-                                data,
-                                locked.Stride * y,
-                                newData,
-                                locked2.Stride * y,
-                                Math.Min(locked.Stride, locked2.Stride));
-                        }
-                        data = newData;
-                    }
-                    Marshal.Copy(data, 0, locked2.Scan0, data.Length);
-                    newBitmap.UnlockBits(locked2);
-                    bmp.UnlockBits(locked);
-                    this.bmp = newBitmap;
-                }
-            }
-            Bitmap bmp;
-            public override int Width
-            {
-                get { return (bmp == null) ? 0 : bmp.Width; }
-            }
-            public override int Height
-            {
-                get { return (bmp == null) ? 0 : bmp.Height; }
-            }
-            public override void Draw(Graphics g)
-            {
-                if (bmp != null) g.DrawImage(bmp, X, Y);
-            }
-            public override void Draw(BitmapData bdata)
-            {
-                if (bmp == null)
-                {
-                    return;
-                }
-                if (bdata.PixelFormat != bmp.PixelFormat)
-                {
-                    throw new Exception("BitmapData is " + bdata.PixelFormat
-                        + ", must be " + bmp.PixelFormat);
-                }
-                if (bdata.Width != Width || bdata.Height != Height)
-                {
-                    throw new Exception("BitmapData is " + bdata.Width + "x" + bdata.Height
-                        + ", must be " + Width + "x" + Height);
-                }
-                BitmapData locked = bmp.LockBits(
-                    new Rectangle(0, 0, Width, Height),
-                    ImageLockMode.ReadOnly,
-                    PixelFormat.Format1bppIndexed);
-                byte[] data = new byte[locked.Stride * locked.Height];
-                Marshal.Copy(locked.Scan0, data, 0, data.Length);
-                byte[] outData;
-                if (locked.Stride == bdata.Stride)
-                {
-                    outData = data;
-                }
-                else
-                {
-                    outData = new byte[bdata.Stride * bdata.Height];
-                    for (int y = 0; y < bdata.Height; y++)
-                    {
-                        Buffer.BlockCopy(
-                            data,
-                            y * locked.Stride,
-                            outData,
-                            y * bdata.Stride,
-                            Math.Min(bdata.Stride, locked.Stride));
+                        rowUsed = true;
+                        break;
                     }
                 }
-                bmp.UnlockBits(locked);
-                Marshal.Copy(outData, 0, bdata.Scan0, outData.Length);
+                if (rowUsed) break;
+                removeBottomRows++;
             }
-            public override string UniqueKey
+            if (removeLeftRows == bmp.Width)
             {
-                get
+                this.bmp = null;
+                paddingLeft = xOffset;
+                paddingRight = bmp.Width;
+                paddingTop = yOffset;
+                paddingBottom = bmp.Height;
+                return;
+            }
+            for (int y = 0; y < bmp.Height; y++)
+            {
+                bool rowUsed = false;
+                for (int x = 0; x < bmp.Width; x++)
                 {
-                    if (bmp == null) return null;
-                    return bmp.Width + "," + bmp.Height + "," + HashUtil.MD5Bitmap(bmp);
+                    if (bmp.GetPixel(x, y).R >= 128)
+                    {
+                        rowUsed = true;
+                        break;
+                    }
                 }
+                if (rowUsed) break;
+                removeTopRows++;
+            }
+            for (int x = 0; x < bmp.Width; x++)
+            {
+                bool colUsed = false;
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    if (bmp.GetPixel(x, y).R >= 128)
+                    {
+                        colUsed = true;
+                        break;
+                    }
+                }
+                if (colUsed) break;
+                removeLeftRows++;
+            }
+            for (int x = bmp.Width - 1; x >= 0; x--)
+            {
+                bool colUsed = false;
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    if (bmp.GetPixel(x, y).R >= 128)
+                    {
+                        colUsed = true;
+                        break;
+                    }
+                }
+                if (colUsed) break;
+                removeRightRows++;
+            }
+            paddingLeft += removeLeftRows;
+            paddingTop += removeTopRows;
+            if (removeLeftRows == bmp.Width || removeTopRows == bmp.Height)
+            {
+                this.bmp = null;
+            }
+            else if ((removeLeftRows + removeRightRows + removeTopRows + removeBottomRows) > 0)
+            {
+                this.bmp = BitmapUtil.WindowBitmap(
+                    bmp,
+                    removeLeftRows,
+                    removeTopRows,
+                    bmp.Width - removeLeftRows - removeRightRows,
+                    bmp.Height - removeTopRows - removeBottomRows);
+            }
+        }
+        Bitmap bmp;
+        public override int Width
+        {
+            get { return (bmp == null) ? 0 : bmp.Width; }
+        }
+        public override int Height
+        {
+            get { return (bmp == null) ? 0 : bmp.Height; }
+        }
+        public override void Draw(Graphics g)
+        {
+            if (bmp != null) g.DrawImage(bmp, X, Y);
+        }
+        public override void Draw(BitmapData bdata)
+        {
+            if (bmp == null)
+            {
+                return;
+            }
+            if (bdata.PixelFormat != bmp.PixelFormat)
+            {
+                throw new Exception("BitmapData is " + bdata.PixelFormat
+                    + ", must be " + bmp.PixelFormat);
+            }
+            if (bdata.Width != Width || bdata.Height != Height)
+            {
+                throw new Exception("BitmapData is " + bdata.Width + "x" + bdata.Height
+                    + ", must be " + Width + "x" + Height);
+            }
+            BitmapData locked = bmp.LockBits(
+                new Rectangle(0, 0, Width, Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format1bppIndexed);
+            byte[] data = new byte[locked.Stride * locked.Height];
+            Marshal.Copy(locked.Scan0, data, 0, data.Length);
+            byte[] outData;
+            if (locked.Stride == bdata.Stride)
+            {
+                outData = data;
+            }
+            else
+            {
+                outData = new byte[bdata.Stride * bdata.Height];
+                for (int y = 0; y < bdata.Height; y++)
+                {
+                    Buffer.BlockCopy(
+                        data,
+                        y * locked.Stride,
+                        outData,
+                        y * bdata.Stride,
+                        Math.Min(bdata.Stride, locked.Stride));
+                }
+            }
+            bmp.UnlockBits(locked);
+            Marshal.Copy(outData, 0, bdata.Scan0, outData.Length);
+        }
+        public override string UniqueKey
+        {
+            get
+            {
+                if (bmp == null) return null;
+                return bmp.Width + "," + bmp.Height + "," + HashUtil.MD5Bitmap(bmp);
             }
         }
     }
@@ -362,7 +332,7 @@ namespace RedHerringFarm
                 foreach (WfnChar wfnChar in wfn.Characters)
                 {
                     Bitmap bmp = wfnChar.GetBitmap();
-                    chars.Add(new AgsFontChar.BitmapChar(bmp, bmp == null ? 0 : bmp.Width, 0, 0));
+                    chars.Add(new AgsFontChar(bmp, bmp == null ? 0 : bmp.Width, 0, 0));
                 }
             }
             private List<AgsFontChar> chars = new List<AgsFontChar>();
@@ -387,7 +357,7 @@ namespace RedHerringFarm
                     {
                         glyph.ToBitmap(FT_RenderMode.Mono, true);
                         Bitmap bmp = glyph.GetBitmap();
-                        chars.Add(new AgsFontChar.BitmapChar(
+                        chars.Add(new AgsFontChar(
                             bmp,
                             (int)Math.Ceiling(slot.Metrics_HorizontalLayout_Advance / 64.0),
                             (int)Math.Ceiling(slot.Metrics_HorizontalLayout_Left / 64.0),

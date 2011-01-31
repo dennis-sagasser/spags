@@ -7,10 +7,10 @@ namespace RedHerringFarm.JavaScriptGeneration
     public class Variable : Expression
     {
         public string Name;
-        private PossibleValueTypes valueTypes;
+        public PossibleValueTypes VariableType;
         public override PossibleValueTypes ValueTypes
         {
-            get { return valueTypes; }
+            get { return VariableType; }
         }
         public Variable(string name)
             : this(name, PossibleValueTypes.Any)
@@ -19,11 +19,12 @@ namespace RedHerringFarm.JavaScriptGeneration
         public Variable(string name, PossibleValueTypes valueTypes)
         {
             Name = name;
-            this.valueTypes = valueTypes;
+            this.VariableType = valueTypes;
         }
         public override void WriteTo(Writer writer)
         {
             writer.Write(Name);
         }
+        public Expression InitialValue;
     }
 }

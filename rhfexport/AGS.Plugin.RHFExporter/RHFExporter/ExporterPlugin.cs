@@ -81,6 +81,7 @@ namespace RedHerringFarm
         public const string TASK_EXPORT_ICONS = "Exporting icons...";
         public const string TASK_EXPORT_TRANSLATIONS = "Exporting translations...";
         public const string TASK_EXPORT_ROOM_DEF = "Exporting room definition...";
+        public const string TASK_EXPORT_ROOM_SCRIPT = "Exporting room script...";
         public const string TASK_EXPORT_ROOM_BACKGROUNDS = "Exporting room backgrounds...";
         public const string TASK_POSTPROCESS_BITMAPS = "Postprocessing bitmaps...";
 
@@ -158,6 +159,15 @@ namespace RedHerringFarm
 
         public void ExportCurrentRoomData()
         {
+            if (!HacksAndKludges.AreDialogScriptsCached(editor))
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Please build the project properly first.",
+                    "Build Required",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
             ExportProgress progressDialog = new ExportProgress();
             progressDialog.ExportBackgroundWorker.DoWork +=
                 delegate(object sender, DoWorkEventArgs e)
@@ -172,6 +182,7 @@ namespace RedHerringFarm
 
                         TaskManager.Expect(TASK_PREPARE_BITMAP_EXPORT);
                         TaskManager.Expect(TASK_EXPORT_ROOM_DEF);
+                        TaskManager.Expect(TASK_EXPORT_ROOM_SCRIPT);
                         TaskManager.Expect(TASK_EXPORT_ROOM_BACKGROUNDS);
                         TaskManager.Expect(TASK_POSTPROCESS_BITMAPS);
 
@@ -182,6 +193,10 @@ namespace RedHerringFarm
                         using (TaskManager.Start(TASK_EXPORT_ROOM_DEF))
                         {
                             ExportCurrentRoomDef();
+                        }
+                        using (TaskManager.Start(TASK_EXPORT_ROOM_SCRIPT))
+                        {
+                            ExportCurrentRoomScript();
                         }
                         using (TaskManager.Start(TASK_EXPORT_ROOM_BACKGROUNDS))
                         {

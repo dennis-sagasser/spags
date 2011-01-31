@@ -6,6 +6,10 @@ namespace RedHerringFarm.JavaScriptGeneration
 {
     public class Block : List<Statement>
     {
+        public void Add(Expression expr)
+        {
+            this.Add((Statement)expr);
+        }
         protected virtual void WriteBlockContents(Writer writer)
         {
             bool first = true;

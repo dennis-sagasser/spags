@@ -31,6 +31,19 @@ namespace RedHerringFarm.JavaScriptGeneration
             get { return true; }
         }
 
+        public class GenericBlock : Statement
+        {
+            public Block Block = new Block();
+            public override bool RequireSemicolon
+            {
+                get { return false; }
+            }
+            public override void WriteTo(Writer writer)
+            {
+                Block.WriteTo(writer);
+            }
+        }
+
         public class While : Statement
         {
             public Expression WhileThisIsTrue;

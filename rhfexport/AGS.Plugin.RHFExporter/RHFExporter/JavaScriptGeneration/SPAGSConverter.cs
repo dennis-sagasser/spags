@@ -9,9 +9,9 @@ namespace RedHerringFarm.JavaScriptGeneration
         public Dictionary<SPAGS.Function, string> SPAGSFunctionNames
             = new Dictionary<SPAGS.Function,string>();
 
-        public Expression.Function FromSPAGS(SPAGS.Function spagsFunc)
+        public FunctionDefinition FromSPAGS(SPAGS.Function spagsFunc)
         {
-            Expression.Function jsFunc = new Expression.Function();
+            FunctionDefinition jsFunc = new FunctionDefinition();
             for (int i = 0; i < spagsFunc.ParameterVariables.Count; i++)
             {
                 SPAGS.Parameter spagsParam = spagsFunc.ParameterVariables[i];
@@ -24,6 +24,21 @@ namespace RedHerringFarm.JavaScriptGeneration
                 jsFunc.Body.Add(FromSPAGS(spagsFunc, statement, jsFunc.Body));
             }
             return jsFunc;
+        }
+
+        public ScopedBlock FunctionBodyFromSPAGS(SPAGS.Function spagsFunc)
+        {
+            ScopedBlock body = new ScopedBlock();
+            foreach (SPAGS.Statement statement in spagsFunc.Body.ChildStatements)
+            {
+                body.Add(FromSPAGS(spagsFunc, statement, body));
+            }
+            if (spagsFunc.Signature.ReturnType.Category != SPAGS.ValueTypeCategory.Void
+                && !spagsFunc.Body.Returns())
+            {
+                body.Add(FromSPAGS(spagsFunc, new SPAGS.Statement.Return(spagsFunc.Signature.ReturnType.CreateDefaultValueExpression()), body));
+            }
+            return body;
         }
 
         public PossibleValueTypes GetValueTypes(SPAGS.ValueType spagsVT)
@@ -60,6 +75,14 @@ namespace RedHerringFarm.JavaScriptGeneration
             }
             switch (spagsStatement.Type)
             {
+                case SPAGS.StatementType.Block:
+                    SPAGS.Statement.Block spagsBlock = (SPAGS.Statement.Block)spagsStatement;
+                    Statement.GenericBlock jsBlock = new Statement.GenericBlock();
+                    foreach (SPAGS.Statement statement in spagsBlock.ChildStatements)
+                    {
+                        jsBlock.Block.Add(FromSPAGS(spagsFunc, statement, jsScope));
+                    }
+                    return jsBlock;
                 case SPAGS.StatementType.Assign:
                     SPAGS.Statement.Assign spagsAssign = (SPAGS.Statement.Assign)spagsStatement;
                     PossibleValueTypes assignType = GetValueTypes(spagsAssign.Target.GetValueType());
@@ -170,6 +193,8 @@ namespace RedHerringFarm.JavaScriptGeneration
             = new Dictionary<SPAGS.Function,Expression>();
         private Dictionary<SPAGS.Variable, Expression> variableExpressions
             = new Dictionary<SPAGS.Variable,Expression>();
+        private Dictionary<SPAGS.ValueType.Struct, Expression> structConstructors
+            = new Dictionary<SPAGS.ValueType.Struct,Expression>();
 
         public void AddReference(SPAGS.Function func, Expression expr)
         {
@@ -179,6 +204,11 @@ namespace RedHerringFarm.JavaScriptGeneration
         public void AddReference(SPAGS.Variable variable, Expression expr)
         {
             variableExpressions.Add(variable, expr);
+        }
+
+        public void AddReference(SPAGS.ValueType.Struct structType, Expression expr)
+        {
+            structConstructors.Add(structType, expr);
         }
 
         public void SetReference(SPAGS.Function func, Expression expr)
@@ -191,6 +221,10 @@ namespace RedHerringFarm.JavaScriptGeneration
             variableExpressions[variable] = expr;
         }
 
+        public void SetReference(SPAGS.ValueType.Struct structType, Expression expr)
+        {
+            structConstructors[structType] = expr;
+        }
 
         private Expression GetReference(SPAGS.Function func)
         {
@@ -210,17 +244,26 @@ namespace RedHerringFarm.JavaScriptGeneration
             return variableExpressions[variable];
         }
 
+        private Expression GetReference(SPAGS.ValueType.Struct structType)
+        {
+            if (!structConstructors.ContainsKey(structType))
+            {
+                return new Expression.Custom("(UNKNOWN STRUCT: " + structType.Name + ")");
+            }
+            return structConstructors[structType];
+        }
+
         public Expression FromSPAGS(
             SPAGS.Function func,
             List<SPAGS.Expression> callParameters,
             List<SPAGS.Expression> callVarargs)
         {
             Expression funcRef = GetReference(func);
-            Expression.Call call = new Expression.Call(funcRef, GetValueTypes(func.Signature.ReturnType));
+            List<Expression> parameters = new List<Expression>();
             for (int i = 0; i < callParameters.Count; i++)
             {
                 PossibleValueTypes paramVT = GetValueTypes(func.Signature.Parameters[i].Type);
-                call.Parameters.Add(FromSPAGS(callParameters[i]).Cast(paramVT));
+                parameters.Add(FromSPAGS(callParameters[i]).Cast(paramVT));
             }
             if (callVarargs != null && callVarargs.Count != 0)
             {
@@ -229,29 +272,9 @@ namespace RedHerringFarm.JavaScriptGeneration
                 {
                     arr.Entries.Add(FromSPAGS(callVararg));
                 }
-                call.Parameters.Add(arr);
+                parameters.Add(arr);
             }
-            // TODO: improve this
-            switch (func.Name)
-            {
-                case "IntToFloat":
-                    if (call.Parameters.Count == 1)
-                    {
-                        return call.Parameters[0];
-                    }
-                    break;
-                case "FloatToInt":
-                    int mode;
-                    if (call.Parameters.Count == 2 && call.Parameters[1].TryGetIntValue(out mode))
-                    {
-                        switch (mode)
-                        {
-                            case 0:
-                                return new Expression.NumberToInt32Cast(call.Parameters[0]);
-                        }
-                    }
-                    break;
-            }
+            Expression call = funcRef.Call(parameters);
             return call;
         }
 
@@ -340,13 +363,26 @@ namespace RedHerringFarm.JavaScriptGeneration
             {
                 case SPAGS.ExpressionType.AllocateArray:
                     SPAGS.Expression.AllocateArray arr = (SPAGS.Expression.AllocateArray)spagsExpr;
-                    return new FillArrayExpression(
-                        FromSPAGS(arr.ElementType.CreateDefaultValueExpression()),
-                        FromSPAGS(arr.Length));
+                    if (arr.ElementType.Category == SPAGS.ValueTypeCategory.Struct
+                        && !((SPAGS.ValueType.Struct)arr.ElementType).IsManaged)
+                    {
+                        List<Expression> arguments = new List<Expression>();
+                        arguments.Add(GetReference((SPAGS.ValueType.Struct)arr.ElementType));
+                        arguments.Add(FromSPAGS(arr.Length));
+                        return OtherLibraries.Util.structArray.Call(arguments);
+                    }
+                    else
+                    {
+                        return new FillArrayExpression(
+                            FromSPAGS(arr.ElementType.CreateDefaultValueExpression()),
+                            FromSPAGS(arr.Length));
+                    }
                 case SPAGS.ExpressionType.AllocStringBuffer:
                     return new AllocateStringBufferExpression();
                 case SPAGS.ExpressionType.AllocStruct:
-                    break;
+                    SPAGS.Expression.AllocateStruct allocStruct = (SPAGS.Expression.AllocateStruct)spagsExpr;
+                    Expression structCtor = GetReference(allocStruct.TheStructType);
+                    return new Expression.New(structCtor);
                 case SPAGS.ExpressionType.ArrayIndex:
                     SPAGS.Expression.ArrayIndex arrayIndex = (SPAGS.Expression.ArrayIndex)spagsExpr;
                     return FromSPAGS(arrayIndex.Target).Index(FromSPAGS(arrayIndex.Index));
@@ -398,9 +434,37 @@ namespace RedHerringFarm.JavaScriptGeneration
                         case SPAGS.TokenType.Modulus:
                             return left.BinOp(Infix.Modulus, right);
                         case SPAGS.TokenType.Multiply:
-                            if (spagsBinOp.Left.GetValueType().Category == SPAGS.ValueTypeCategory.Int)
+                            if (mathCast == PossibleValueTypes.Int32)
                             {
-                                return new MultiplyIntExpression(left, right);
+                                bool useSpecialFunction = true;
+                                SPAGS.ValueType leftType = spagsBinOp.Left.GetValueType();
+                                SPAGS.ValueType rightType = spagsBinOp.Right.GetValueType();
+                                if (leftType.IntType != "int32" || rightType.IntType != "int32")
+                                {
+                                    useSpecialFunction = false;
+                                }
+                                else
+                                {
+                                    int leftVal, rightVal;
+                                    if (spagsBinOp.Left.TryGetIntValue(out leftVal)
+                                        && (leftVal > -1000000) && (leftVal < 1000000))
+                                    {
+                                        useSpecialFunction = false;
+                                    }
+                                    if (spagsBinOp.Right.TryGetIntValue(out rightVal)
+                                        && (rightVal > -1000000) && (rightVal < 1000000))
+                                    {
+                                        useSpecialFunction = false;
+                                    }
+                                }
+                                if (useSpecialFunction)
+                                {
+                                    return new MultiplyIntExpression(left, right);
+                                }
+                                else
+                                {
+                                    return left.BinOp(Infix.Multiply, right).Cast(PossibleValueTypes.Int32);
+                                }
                             }
                             return left.BinOp(Infix.Multiply, right);
                         case SPAGS.TokenType.Subtract:

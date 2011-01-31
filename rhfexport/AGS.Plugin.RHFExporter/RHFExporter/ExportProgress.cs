@@ -154,7 +154,7 @@ namespace RedHerringFarm
         {
             SuccessTimer.Enabled = false;
             MessageBox.Show(
-                HacksAndKludges.GetMainWindow(),
+                this,
                 "Export completed successfully.",
                 "Success",
                 MessageBoxButtons.OK,

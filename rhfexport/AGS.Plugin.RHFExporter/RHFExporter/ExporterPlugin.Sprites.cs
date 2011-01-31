@@ -13,43 +13,100 @@ namespace RedHerringFarm
         private void PrepareSpriteImageSheets()
         {
             spriteImageSheetEntries = new List<SpriteImageSheetEntry>();
-            ImageSheet nonAlphaSpriteImageSheet = new ImageSheet(2880, 2880, 0, 0);
-            nonAlphaSpriteImageSheet.ClearColor = HacksAndKludges.GetTransparencyColor();
-            nonAlphaSpriteImageSheet.MakeTransparent = true;
-            ImageSheet alphaSpriteImageSheet = new ImageSheet(2880, 2880, 0, 0);
-            foreach (AGS.Types.Sprite sprite in GetAllSprites())
+
+            List<ImageSheet> spriteImageSheets = new List<ImageSheet>();
+            ExportSpriteFolder(editor.CurrentGame.Sprites, null, spriteImageSheets, false, true);
+            ExportSpriteFolder(editor.CurrentGame.Sprites, null, spriteImageSheets, true, true);
+
+            foreach (ImageSheet sheet in spriteImageSheets)
             {
-                if (sprite == null || sprite.Width == 0 || sprite.Height == 0)
+                sheet.Pack();
+                GameImageSheets.Add(sheet);
+            }
+        }
+        private void ExportSpriteFolder(
+            AGS.Types.ISpriteFolder folder,
+            ImageSheet toMaskSheet,
+            List<ImageSheet> completeImageSheets,
+            bool alpha,
+            bool topLevel)
+        {
+            if (toMaskSheet == null)
+            {
+                toMaskSheet = new ImageSheet(settings.MaxImageSheetWidth, settings.MaxImageSheetHeight, 0, 0);
+                if (!alpha)
                 {
-                    spriteImageSheetEntries.Add(null);
-                    continue;
+                    toMaskSheet.ClearColor = HacksAndKludges.GetTransparencyColor();
+                    toMaskSheet.MakeTransparent = true;
                 }
-                SpriteImageSheetEntry entry = new SpriteImageSheetEntry(editor, sprite);
-                spriteImageSheetEntries.Add(entry);
-                if (sprite.AlphaChannel)
+                foreach (AGS.Types.Sprite sprite in folder.Sprites)
                 {
-                    alphaSpriteImageSheet.AddEntry(entry);
-                }
-                else
-                {
-                    nonAlphaSpriteImageSheet.AddEntry(entry);
+                    if ((alpha && !sprite.AlphaChannel) || (!alpha && sprite.AlphaChannel))
+                    {
+                        continue;
+                    }
+                    if (sprite.Width > settings.MaxImageSheetWidth || sprite.Height > settings.MaxImageSheetHeight)
+                    {
+                        throw new Exception("Sprite #" + sprite.Number + " is bigger than the maximum image sheet size");
+                    }
+                    SpriteImageSheetEntry entry;
+                    if (alpha)
+                    {
+                        entry = new SpriteImageSheetEntry(editor, sprite, Color.Transparent);
+                    }
+                    else
+                    {
+                        entry = new SpriteImageSheetEntry(editor, sprite, HacksAndKludges.GetTransparencyColor());
+                    }
+                    if (!toMaskSheet.AddEntry(entry))
+                    {
+                        if (!toMaskSheet.IsEmpty)
+                        {
+                            completeImageSheets.Add(toMaskSheet);
+                        }
+                        toMaskSheet = new ImageSheet(settings.MaxImageSheetWidth, settings.MaxImageSheetHeight, 0, 0);
+                    }
                 }
             }
-            if (!nonAlphaSpriteImageSheet.IsEmpty)
+            else
             {
-                if (!nonAlphaSpriteImageSheet.Pack())
+                object maskSnapshot = toMaskSheet.Snapshot();
+
+                foreach (AGS.Types.Sprite sprite in folder.Sprites)
                 {
-                    throw new Exception("Unable to pack sprites!");
+                    if ((alpha && !sprite.AlphaChannel) || (!alpha && sprite.AlphaChannel))
+                    {
+                        continue;
+                    }
+                    if (sprite.Width > settings.MaxImageSheetWidth || sprite.Height > settings.MaxImageSheetHeight)
+                    {
+                        throw new Exception("Sprite #" + sprite.Number + " is bigger than the maximum image sheet size");
+                    }
+                    SpriteImageSheetEntry entry;
+                    if (alpha)
+                    {
+                        entry = new SpriteImageSheetEntry(editor, sprite, Color.Transparent);
+                    }
+                    else
+                    {
+                        entry = new SpriteImageSheetEntry(editor, sprite, HacksAndKludges.GetTransparencyColor());
+                    }
+                    if (!toMaskSheet.AddEntry(entry))
+                    {
+                        toMaskSheet.RestoreSnapshot(maskSnapshot);
+                        ExportSpriteFolder(folder, null, completeImageSheets, alpha, true);
+                        return;
+                    }
                 }
-                GameImageSheets.Add(nonAlphaSpriteImageSheet);
             }
-            if (!alphaSpriteImageSheet.IsEmpty)
+            int insert = completeImageSheets.Count;
+            foreach (AGS.Types.SpriteFolder subfolder in folder.SubFolders)
             {
-                if (!alphaSpriteImageSheet.Pack())
-                {
-                    throw new Exception("Unable to pack sprites!");
-                }
-                GameImageSheets.Add(alphaSpriteImageSheet);
+                ExportSpriteFolder(subfolder, toMaskSheet, completeImageSheets, alpha, false);
+            }
+            if (topLevel && !toMaskSheet.IsEmpty)
+            {
+                completeImageSheets.Insert(insert, toMaskSheet);
             }
         }
         private void WriteSpritesJson(JsonWriter output)
@@ -62,7 +119,7 @@ namespace RedHerringFarm
             {
                 foreach (SpriteImageSheetEntry entry in spriteImageSheetEntries)
                 {
-                    if (entry == null)
+                    if (entry == null || entry.Width == 0 || entry.Height == 0)
                     {
                         output.WriteNull();
                     }
@@ -102,24 +159,170 @@ namespace RedHerringFarm
 	}
     public class SpriteImageSheetEntry : ImageSheetEntry
     {
-        public SpriteImageSheetEntry(AGS.Types.IAGSEditor editor, AGS.Types.Sprite sprite)
+        public SpriteImageSheetEntry(AGS.Types.IAGSEditor editor, AGS.Types.Sprite sprite, Color bgColor)
         {
-            this.editor = editor;
             TheSprite = sprite;
+            bitmap = editor.GetSpriteImage(TheSprite.Number);
+            Trim(bgColor);
         }
-        private readonly AGS.Types.IAGSEditor editor;
+        private void Trim(Color backgroundColor)
+        {
+            if (bitmap == null)
+            {
+                return;
+            }
+            paddingLeft = paddingRight = paddingTop = paddingBottom = 0;
+            for (int x = 0; x < bitmap.Width; x++)
+            {
+                bool colUsed = false;
+                for (int y = 0; y < bitmap.Height; y++)
+                {
+                    Color px = bitmap.GetPixel(x, y);
+                    if (backgroundColor.A == 0)
+                    {
+                        if (px.A != 0)
+                        {
+                            colUsed = true;
+                            break;
+                        }
+                    }
+                    else if (backgroundColor.R != px.R || backgroundColor.G != px.G || backgroundColor.B != px.B)
+                    {
+                        colUsed = true;
+                        break;
+                    }
+                }
+                if (colUsed)
+                {
+                    break;
+                }
+                else
+                {
+                    paddingLeft++;
+                }
+            }
+            if (paddingLeft == bitmap.Width)
+            {
+                paddingRight = paddingLeft;
+                paddingLeft = 0;
+                paddingTop = 0;
+                paddingBottom = bitmap.Height;
+                bitmap = null;
+                return;
+            }
+            for (int x = bitmap.Width-1; x >= 0; x--)
+            {
+                bool colUsed = false;
+                for (int y = 0; y < bitmap.Height; y++)
+                {
+                    Color px = bitmap.GetPixel(x, y);
+                    if (backgroundColor.A == 0)
+                    {
+                        if (px.A != 0)
+                        {
+                            colUsed = true;
+                            break;
+                        }
+                    }
+                    else if (backgroundColor.R != px.R || backgroundColor.G != px.G || backgroundColor.B != px.B)
+                    {
+                        colUsed = true;
+                        break;
+                    }
+                }
+                if (colUsed)
+                {
+                    break;
+                }
+                else
+                {
+                    paddingRight++;
+                }
+            }
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                bool rowUsed = false;
+                for (int x = paddingLeft; x < bitmap.Width - paddingRight; x++)
+                {
+                    Color px = bitmap.GetPixel(x, y);
+                    if (backgroundColor.A == 0)
+                    {
+                        if (px.A != 0)
+                        {
+                            rowUsed = true;
+                            break;
+                        }
+                    }
+                    else if (backgroundColor.R != px.R || backgroundColor.G != px.G || backgroundColor.B != px.B)
+                    {
+                        rowUsed = true;
+                        break;
+                    }
+                }
+                if (rowUsed)
+                {
+                    break;
+                }
+                else
+                {
+                    paddingTop++;
+                }
+            }
+            for (int y = bitmap.Height - 1; y >= 0; y--)
+            {
+                bool rowUsed = false;
+                for (int x = paddingLeft; x < bitmap.Width - paddingRight; x++)
+                {
+                    Color px = bitmap.GetPixel(x, y);
+                    if (backgroundColor.A == 0)
+                    {
+                        if (px.A != 0)
+                        {
+                            rowUsed = true;
+                            break;
+                        }
+                    }
+                    else if (backgroundColor != px)
+                    {
+                        rowUsed = true;
+                        break;
+                    }
+                }
+                if (rowUsed)
+                {
+                    break;
+                }
+                else
+                {
+                    paddingBottom++;
+                }
+            }
+            if ((paddingLeft + paddingRight + paddingTop + paddingBottom) > 0)
+            {
+                bitmap = BitmapUtil.WindowBitmap(
+                    bitmap,
+                    paddingLeft,
+                    paddingTop,
+                    bitmap.Width - paddingLeft - paddingRight,
+                    bitmap.Height - paddingTop - paddingBottom);
+            }
+        }
+        private Bitmap bitmap;
         public readonly AGS.Types.Sprite TheSprite;
         public override int Width
         {
-            get { return TheSprite.Width; }
+            get { return (bitmap == null) ? 0 : bitmap.Width; }
         }
         public override int Height
         {
-            get { return TheSprite.Height; }
+            get { return (bitmap == null) ? 0 : bitmap.Height; }
         }
         public override void Draw(Graphics g)
         {
-            g.DrawImage(editor.GetSpriteImage(TheSprite.Number), X, Y);
+            if (bitmap != null)
+            {
+                g.DrawImage(bitmap, X, Y);
+            }
         }
         public override void Draw(BitmapData bdata)
         {

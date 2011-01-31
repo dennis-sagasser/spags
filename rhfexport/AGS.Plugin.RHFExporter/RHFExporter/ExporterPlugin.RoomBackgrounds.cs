@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
 using System.Drawing.Imaging;
+using RedHerringFarm.ImageSheets;
 
 namespace RedHerringFarm
 {
@@ -19,7 +20,13 @@ namespace RedHerringFarm
                 {
                     editor.RoomController.DrawRoomBackground(g, 0, 0, i, 1);
                 }
-                ExportBitmap(bmp, InExportFolder(ROOM_BACKGROUND_FILENAME, editor.RoomController.CurrentRoom.Number, i));
+                Bitmap saveBmp = bmp;
+                Bitmap paletted;
+                if (BitmapUtil.TryMakePaletted(bmp, out paletted))
+                {
+                    saveBmp = paletted;
+                }
+                ExportBitmap(saveBmp, InExportFolder(ROOM_BACKGROUND_FILENAME, editor.RoomController.CurrentRoom.Number, i));
             }
         }
     }

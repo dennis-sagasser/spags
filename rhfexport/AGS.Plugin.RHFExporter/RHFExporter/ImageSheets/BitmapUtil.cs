@@ -10,6 +10,41 @@ namespace RedHerringFarm.ImageSheets
 {
     public static class BitmapUtil
     {
+        public static Bitmap WindowBitmap(Bitmap bmp, int windowX, int windowY, int width, int height)
+        {
+            Bitmap newBitmap = new Bitmap(
+                width,
+                height,
+                bmp.PixelFormat);
+            BitmapData locked = bmp.LockBits(
+                new Rectangle(windowX, windowY, width, height),
+                ImageLockMode.ReadOnly,
+                bmp.PixelFormat);
+            byte[] data = new byte[locked.Stride * locked.Height];
+            Marshal.Copy(locked.Scan0, data, 0, data.Length);
+            BitmapData locked2 = newBitmap.LockBits(
+                new Rectangle(0, 0, width, height),
+                ImageLockMode.WriteOnly,
+                newBitmap.PixelFormat);
+            if (locked2.Stride != locked.Stride)
+            {
+                byte[] newData = new byte[locked2.Stride * locked2.Height];
+                for (int y = 0; y < locked.Height; y++)
+                {
+                    Buffer.BlockCopy(
+                        data,
+                        locked.Stride * y,
+                        newData,
+                        locked2.Stride * y,
+                        Math.Min(locked.Stride, locked2.Stride));
+                }
+                data = newData;
+            }
+            Marshal.Copy(data, 0, locked2.Scan0, data.Length);
+            newBitmap.UnlockBits(locked2);
+            bmp.UnlockBits(locked);
+            return newBitmap;
+        }
         private static bool TryMakePaletted_A8R8G8B8(
             BitmapData inbits, BitmapData outbits,
             byte[] indata, byte[] outdata,

@@ -402,6 +402,15 @@ namespace RedHerringFarm.JavaScriptGeneration
         {
             return new Indexing(this, new StringLiteral(key));
         }
+        public Expression Index(params string[] keys)
+        {
+            Expression finalExpression = this;
+            for (int i = 0; i < keys.Length; i++)
+            {
+                finalExpression = finalExpression.Index(keys[i]);
+            }
+            return finalExpression;
+        }
         public Indexing Index(string key, PossibleValueTypes valTypes)
         {
             return new Indexing(this, new StringLiteral(key), valTypes);
@@ -1275,40 +1284,65 @@ namespace RedHerringFarm.JavaScriptGeneration
             #endregion
         }
 
-        public class Function : Expression
+        public InfixOperation Assign(Expression value)
         {
-            public List<Variable> Parameters = new List<Variable>();
-            public ScopedBlock Body = new ScopedBlock();
+            return this.BinOp(Infix.Assign, value);
+        }
+
+        public class New : Calling
+        {
+            public New(Expression constructor)
+                : base(constructor, PossibleValueTypes.Any) 
+            {
+            }
             public override void WriteTo(Writer writer)
             {
-                writer.Write("function(");
-                for (int i = 0; i < Parameters.Count; i++)
-                {
-                    if (i > 0) writer.Write(", ");
-                    Parameters[i].WriteTo(writer);
-                }
-                writer.Write(") ");
-                Body.WriteTo(writer);
+                writer.Write("new ");
+                base.WriteTo(writer);
             }
         }
 
-        public class Call : Expression
+        protected virtual PossibleValueTypes GetReturnTypes(IEnumerable<Expression> parameters)
+        {
+            return PossibleValueTypes.Any;
+        }
+
+        public Expression Call(params Expression[] parameters)
+        {
+            return Call((IEnumerable<Expression>)parameters);
+        }
+        public virtual Expression Call(IEnumerable<Expression> parameters)
+        {
+            PossibleValueTypes returnTypes = GetReturnTypes(parameters);
+            Calling call = new Calling(this, returnTypes);
+            call.Parameters.AddRange(parameters);
+            return call;
+        }
+
+        public virtual Expression CallMethod(string methodName, List<Expression> parameters)
+        {
+            Calling call = new Calling(this.Index(methodName), PossibleValueTypes.Any);
+            call.Parameters.AddRange(parameters);
+            return call;
+        }
+
+        public class Calling : Expression
         {
             public Expression CallingOn;
             public List<Expression> Parameters = new List<Expression>();
-            private PossibleValueTypes returnValueType;
+            public PossibleValueTypes ReturnValueType;
             public override PossibleValueTypes ValueTypes
             {
-                get { return returnValueType; }
+                get { return ReturnValueType; }
             }
-            public Call(Expression callingOn, PossibleValueTypes returnValueType)
+            public Calling(Expression callingOn, PossibleValueTypes returnValueType)
             {
                 CallingOn = callingOn;
-                this.returnValueType = returnValueType;
+                this.ReturnValueType = returnValueType;
             }
             public override void WriteTo(Writer writer)
             {
-                if (CallingOn is Expression.Function)
+                if (CallingOn is FunctionDefinition)
                 {
                     writer.Write("(");
                     CallingOn.WriteTo(writer);
@@ -1328,4 +1362,36 @@ namespace RedHerringFarm.JavaScriptGeneration
             }
         }
     }
+
+    public class FunctionDefinition : Expression
+    {
+        public List<Variable> Parameters = new List<Variable>();
+        public Variable This = new Variable("this");
+        public Variable Arguments = new Variable("arguments");
+        public Variable NewParam(string name)
+        {
+            Variable paramVariable = new Variable(name);
+            Parameters.Add(paramVariable);
+            return paramVariable;
+        }
+        public Variable NewVar(string name)
+        {
+            Variable variable = new Variable(name);
+            Body.Variables.Add(name, variable);
+            return variable;
+        }
+        public ScopedBlock Body = new ScopedBlock();
+        public override void WriteTo(Writer writer)
+        {
+            writer.Write("function(");
+            for (int i = 0; i < Parameters.Count; i++)
+            {
+                if (i > 0) writer.Write(", ");
+                Parameters[i].WriteTo(writer);
+            }
+            writer.Write(") ");
+            Body.WriteTo(writer);
+        }
+    }
+
 }

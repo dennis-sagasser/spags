@@ -48,13 +48,7 @@ namespace RedHerringFarm
                 {
                     foreach (ImageSheetEntry entry in sheet)
                     {
-                        using (output.BeginObject())
-                        {
-                            output.WriteValue("x", entry.X);
-                            output.WriteValue("y", entry.Y);
-                            output.WriteValue("w", entry.Width);
-                            output.WriteValue("h", entry.Height);
-                        }
+                        entry.WriteJson(output);
                     }
                 }
             }

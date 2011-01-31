@@ -60,6 +60,7 @@
     <Compile Include="ExporterPlugin.ImageSheets.cs" />
     <Compile Include="ExporterPlugin.RoomBackgrounds.cs" />
     <Compile Include="ExporterPlugin.RoomDef.cs" />
+    <Compile Include="ExporterPlugin.RoomScript.cs" />
     <Compile Include="ExporterPlugin.Sprites.cs" />
     <Compile Include="ExporterPlugin.Translations.cs" />
     <Compile Include="ExporterSettings.cs" />
@@ -80,12 +81,18 @@
     <Compile Include="ImageSheets\HashUtil.cs" />
     <Compile Include="ImageSheets\ImageSheet.cs" />
     <Compile Include="ImageSheets\ImageSheetEntry.cs" />
+    <Compile Include="ImageSheets\SortUtil.cs" />
     <Compile Include="JavaScriptGeneration\Block.cs" />
     <Compile Include="JavaScriptGeneration\CodeFilter.cs" />
     <Compile Include="JavaScriptGeneration\Expression.cs" />
+    <Compile Include="JavaScriptGeneration\Libraries.AGS.cs" />
+    <Compile Include="JavaScriptGeneration\Libraries.Standard.cs" />
+    <Compile Include="JavaScriptGeneration\Libraries.Util.cs" />
     <Compile Include="JavaScriptGeneration\ScopedBlock.cs" />
     <Compile Include="JavaScriptGeneration\Script.cs" />
     <Compile Include="JavaScriptGeneration\SPAGSConverter.cs" />
+    <Compile Include="JavaScriptGeneration\SpecialFunctions.cs" />
+    <Compile Include="JavaScriptGeneration\Libraries.cs" />
     <Compile Include="JavaScriptGeneration\Statement.cs" />
     <Compile Include="JavaScriptGeneration\Util.cs" />
     <Compile Include="JavaScriptGeneration\Variable.cs" />

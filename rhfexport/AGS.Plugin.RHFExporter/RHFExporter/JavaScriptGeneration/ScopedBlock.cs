@@ -24,6 +24,12 @@ namespace RedHerringFarm.JavaScriptGeneration
                         writer.Write(", ");
                     }
                     writer.Write(variableName);
+                    Variable v = Variables[variableName];
+                    if (v.InitialValue != null)
+                    {
+                        writer.Write(" = ");
+                        v.InitialValue.WriteTo(writer);
+                    }
                 }
                 writer.Write(";");
                 if (this.Count > 0)

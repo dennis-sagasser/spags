@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Drawing;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -61,6 +62,15 @@ namespace RedHerringFarm
         public static Color GetTransparencyColor()
         {
             return Color.FromArgb(255, 0, 255);
+        }
+
+        public static string GetScriptText(AGS.Types.Script script)
+        {
+            if (script.FileName == "GlobalScript.asc" && !Regex.IsMatch(script.Text, @"function\s+dialog_request\s*\("))
+            {
+                return script.Text + Environment.NewLine + "function dialog_request(int param) {" + Environment.NewLine + "}";
+            }
+            return script.Text;
         }
 
         public static bool AreDialogScriptsCached(AGS.Types.IAGSEditor editor)

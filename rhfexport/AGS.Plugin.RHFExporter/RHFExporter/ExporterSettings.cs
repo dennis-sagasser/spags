@@ -17,6 +17,20 @@ namespace RedHerringFarm
             set { pngTool = value; }
         }
 
+        private int maxImageSheetWidth = 2880;
+        public int MaxImageSheetWidth
+        {
+            get { return maxImageSheetWidth; }
+            set { maxImageSheetWidth = value; }
+        }
+
+        private int maxImageSheetHeight = 2880;
+        public int MaxImageSheetHeight
+        {
+            get { return maxImageSheetHeight; }
+            set { maxImageSheetHeight = value; }
+        }
+
         public readonly static ExporterSettings Default;
         static ExporterSettings()
         {

@@ -10,6 +10,33 @@ namespace RedHerringFarm.ImageSheets
 {
     public class ImageSheet : IEnumerable<ImageSheetEntry>
     {
+        internal class SheetSnapshot
+        {
+            internal SheetSnapshot(ImageSheet sheet)
+            {
+                Packer = new ArevaloRectanglePacker(sheet.testPacker);
+                Entries = new List<ImageSheetEntry>(sheet.Entries);
+                PixelArea = sheet.pixelArea;
+            }
+            internal void Apply(ImageSheet sheet)
+            {
+                sheet.testPacker = new ArevaloRectanglePacker(Packer);
+                sheet.Entries = new List<ImageSheetEntry>(Entries);
+                sheet.entriesByKey.Clear();
+                foreach (ImageSheetEntry entry in sheet.Entries)
+                {
+                    string key = entry.UniqueKey;
+                    if (key != null)
+                    {
+                        sheet.entriesByKey.Add(key, entry);
+                    }
+                }
+                sheet.pixelArea = PixelArea;
+            }
+            internal ArevaloRectanglePacker Packer;
+            internal List<ImageSheetEntry> Entries;
+            internal int PixelArea;
+        }
         public ImageSheet(int maxWidth, int maxHeight, int betweenRectPadding, int margin, PixelFormat pixelFormat)
         {
             this.MaxWidth = maxWidth;
@@ -22,6 +49,7 @@ namespace RedHerringFarm.ImageSheets
         public ImageSheet(int maxWidth, int maxHeight, int betweenRectPadding, int margin)
             : this(maxWidth, maxHeight, betweenRectPadding, margin, PixelFormat.Format32bppPArgb)
         {
+            testPacker = new ArevaloRectanglePacker(maxWidth, maxHeight);
         }
         private readonly int MaxWidth;
         private readonly int MaxHeight;
@@ -34,11 +62,23 @@ namespace RedHerringFarm.ImageSheets
         private Dictionary<string,ImageSheetEntry> entriesByKey = new Dictionary<string,ImageSheetEntry>();
         private int pixelArea = 0;
 
-        public void AddEntry(ImageSheetEntry entry)
+        private ArevaloRectanglePacker testPacker;
+
+        public object Snapshot()
+        {
+            return new SheetSnapshot(this);
+        }
+
+        public void RestoreSnapshot(object o)
+        {
+            ((SheetSnapshot)o).Apply(this);
+        }
+
+        public bool AddEntry(ImageSheetEntry entry)
         {
             if (entry.Width == 0 || entry.Height == 0)
             {
-                throw new Exception("Image sheet entries must be at least 1x1 pixel");
+                return true;
             }
 
             entry.OwningSheet = this;
@@ -51,18 +91,26 @@ namespace RedHerringFarm.ImageSheets
                 if (entriesByKey.TryGetValue(key, out duplicate))
                 {
                     entry.EntryNumber = duplicate.EntryNumber;
-                    return;
-                }
-                else
-                {
-                    entriesByKey.Add(key, entry);
+                    return true;
                 }
             }
 
-            pixelArea += (entry.Width * entry.Height);
+            Point placement;
+            if (!testPacker.TryPack(entry.Width, entry.Height, out placement))
+            {
+                return false;
+            }
 
             entry.EntryNumber = Entries.Count;
             Entries.Add(entry);
+
+            pixelArea += (entry.Width * entry.Height);
+
+            if (key != null)
+            {
+                entriesByKey.Add(key, entry);
+            }
+            return true;
         }
 
         private int finalWidth;
@@ -81,13 +129,10 @@ namespace RedHerringFarm.ImageSheets
                 throw new Exception("Cannot pack an empty image sheet");
             }
 
-            List<ImageSheetEntry> sorted = new List<ImageSheetEntry>(Entries);
-            sorted.Sort(
+            List<ImageSheetEntry> sorted = SortUtil.Merge<ImageSheetEntry>(Entries,
                 delegate(ImageSheetEntry entry1, ImageSheetEntry entry2)
                 {
-                    int c = -entry1.Width.CompareTo(entry2.Width);
-                    if (c != 0) return c;
-                    return -entry1.Height.CompareTo(entry2.Height);
+                    return -Math.Max(entry1.Width, entry1.Height).CompareTo(Math.Max(entry2.Width, entry2.Height));
                 });
 
             TaskManager.StatusUpdate("Attempting to pack " + sorted.Count + " images...");
@@ -109,68 +154,21 @@ namespace RedHerringFarm.ImageSheets
             int testWidth = outputWidth;
             int testHeight = outputHeight;
 
-            // 1: Initial
-            {
-                testImagePlacement.Clear();
+            // 1-2 rep: 2-Dimensional Shrinkage
+            int maximumWidth = outputWidth;
+            int maximumHeight = outputHeight;
 
-                ArevaloRectanglePacker packer = new ArevaloRectanglePacker(testWidth, testHeight);
-                bool failed = false;
-                foreach (ImageSheetEntry entry in sorted)
-                {
-                    Point pos;
-                    if (!packer.TryPack(
-                        entry.Width + BetweenRectPadding,
-                        entry.Height + BetweenRectPadding,
-                        out pos))
-                    {
-                        failed = true;
-                        break;
-                    }
-                    testImagePlacement[entry] = pos;
-                }
-                if (failed)
-                {
-                    return packed = false;
-                }
-                else
-                {
-                    testWidth = testHeight = 0;
-                    foreach (KeyValuePair<ImageSheetEntry, Point> pair in testImagePlacement)
-                    {
-                        pair.Key.X = Margin + pair.Value.X;
-                        pair.Key.Y = Margin + pair.Value.Y;
-                        testWidth = Math.Max(testWidth, pair.Value.X + pair.Key.Width + BetweenRectPadding);
-                        testHeight = Math.Max(testHeight, pair.Value.Y + pair.Key.Height + BetweenRectPadding);
-                    }
+            int minimumWidth = (int)Math.Floor(Math.Sqrt(pixelArea)) - 1;
+            int minimumHeight = minimumWidth;
 
-                    outputWidth = testWidth;
-                    outputHeight = testHeight;
-
-                    finalWidth = (Margin * 2) + outputWidth - BetweenRectPadding;
-                    finalHeight = (Margin * 2) + outputHeight - BetweenRectPadding;
-                }
-            }
-
-            // 2: 2-Dimensional Shrinkage
-            int maximumWidth = testWidth;
-            int maximumHeight = testHeight;
-
-            int minimumWidth = testWidth;
-            int minimumHeight = testHeight;
-            while ((minimumWidth * minimumHeight) >= pixelArea)
-            {
-                minimumWidth -= smallestWidth;
-                minimumHeight -= smallestHeight;
-            }
-
-            testWidth = minimumWidth + (maximumWidth - minimumWidth)/2;
-            testHeight = minimumHeight + (maximumHeight - minimumHeight)/2;
+            testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
+            testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
 
             while (true)
             {
                 testImagePlacement.Clear();
 
-                TaskManager.StatusUpdate("Trying " + testWidth + "x" + testHeight + "...");
+                TaskManager.StatusUpdate("Trying " + ((Margin * 2) + testWidth - BetweenRectPadding) + "x" + ((Margin * 2) + testHeight - BetweenRectPadding) + "...");
 
                 ArevaloRectanglePacker packer = new ArevaloRectanglePacker(testWidth, testHeight);
                 bool failed = false;
@@ -196,8 +194,8 @@ namespace RedHerringFarm.ImageSheets
                     }
                     minimumWidth = testWidth;
                     minimumHeight = testHeight;
-                    testWidth = minimumWidth + (maximumWidth - minimumWidth)/2;
-                    testHeight = minimumHeight + (maximumHeight - minimumHeight)/2;
+                    testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
+                    testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
                 }
                 else
                 {
@@ -224,23 +222,36 @@ namespace RedHerringFarm.ImageSheets
                     maximumWidth = testWidth;
                     maximumHeight = testHeight;
 
-                    testWidth = minimumWidth + (maximumWidth - minimumWidth)/2;
-                    testHeight = minimumHeight + (maximumHeight - minimumHeight)/2;
+                    testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
+                    testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
                 }
             }
 
-            minimumHeight = (pixelArea / outputWidth) - 1;
-            maximumHeight = outputHeight;
+            // 3: 1-Dimensional Shrink
 
-            testHeight = minimumHeight + (maximumHeight - minimumHeight)/2;
+            bool shrinkVertical = outputWidth <= outputHeight;
 
-            // 3: Vertical-Only Shrink
+            if (shrinkVertical)
+            {
+                minimumWidth = maximumWidth = testWidth = outputWidth;
+                maximumHeight = outputHeight;
+                minimumHeight = (pixelArea / outputWidth) - 1;
+                testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
+            }
+            else
+            {
+                minimumHeight = maximumHeight = testHeight = outputHeight;
+                maximumWidth = outputWidth;
+                minimumWidth = (pixelArea / outputHeight) - 1;
+                testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
+            }
 
             while (true)
             {
                 testImagePlacement.Clear();
 
-                TaskManager.StatusUpdate("Trying " + testWidth + "x" + testHeight + "...");
+                TaskManager.StatusUpdate("Trying " + ((Margin * 2) + testWidth - BetweenRectPadding) + "x" + ((Margin * 2) + testHeight - BetweenRectPadding) + "...");
+
                 ArevaloRectanglePacker packer = new ArevaloRectanglePacker(testWidth, testHeight);
                 bool failed = false;
                 foreach (ImageSheetEntry entry in sorted)
@@ -258,12 +269,15 @@ namespace RedHerringFarm.ImageSheets
                 }
                 if (failed)
                 {
-                    if (maximumHeight <= testHeight + 1)
+                    if (maximumWidth <= testWidth + 1 && maximumHeight <= testHeight + 1)
                     {
+                        // go to the third loop
                         break;
                     }
+                    minimumWidth = testWidth;
                     minimumHeight = testHeight;
-                    testHeight = minimumHeight + ((maximumHeight - minimumHeight) / 2);
+                    testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
+                    testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
                 }
                 else
                 {
@@ -282,15 +296,21 @@ namespace RedHerringFarm.ImageSheets
                     finalWidth = (Margin * 2) + outputWidth - BetweenRectPadding;
                     finalHeight = (Margin * 2) + outputHeight - BetweenRectPadding;
 
-                    if (minimumHeight >= testHeight - 1)
+                    if (minimumWidth >= testWidth - 1 && minimumHeight >= testHeight - 1)
                     {
+                        // go to the third loop
                         break;
                     }
-
+                    maximumWidth = testWidth;
                     maximumHeight = testHeight;
+
+                    testWidth = minimumWidth + (maximumWidth - minimumWidth) / 2;
                     testHeight = minimumHeight + (maximumHeight - minimumHeight) / 2;
                 }
             }
+
+            finalWidth = (Margin * 2) + outputWidth - BetweenRectPadding;
+            finalHeight = (Margin * 2) + outputHeight - BetweenRectPadding;
 
             TaskManager.StatusUpdate("Final size: " + finalWidth + "x" + finalHeight);
             return packed = true;
