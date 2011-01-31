@@ -324,10 +324,10 @@ namespace SPAGS
                 out List<Expression> varargs)
             {
                 Expression.Attribute attr = Target as Expression.Attribute;
-                Expression.ArrayIndex index = Target as Expression.ArrayIndex;
-                if (index != null)
+                Expression.ArrayIndex indexer = Target as Expression.ArrayIndex;
+                if (indexer != null)
                 {
-                    attr = index.Target as Expression.Attribute;
+                    attr = indexer.Target as Expression.Attribute;
                 }
                 if (attr == null)
                 {
@@ -338,9 +338,9 @@ namespace SPAGS
                 {
                     parameters.Add(attr.Target);
                 }
-                if (index != null)
+                if (indexer != null)
                 {
-                    parameters.Add(index);
+                    parameters.Add(indexer.Index);
                 }
                 parameters.Add(SimpleAssignValue());
                 func = attr.TheAttribute.Setter;
