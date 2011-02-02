@@ -72,7 +72,6 @@ namespace SPAGS
                 case TokenType.LeftParenthesis:
                     Expression expr = AdvanceExpression();
                     AdvanceToken(TokenType.RightParenthesis);
-                    //expr.Parenthesised = true;
                     return expr;
 
                 case TokenType.CharLiteral:
