@@ -51,12 +51,6 @@ namespace SPAGS
             yield break;
         }
         public readonly StatementType Type;
-        public object UserData
-        {
-            get { return _userdata; }
-            set { _userdata = value; }
-        }
-        private object _userdata;
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();

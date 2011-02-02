@@ -116,8 +116,14 @@ namespace SPAGS
                         case NameHolderType.Struct:
                             AdvanceToken(/* Token.KnownWord */);
                             Token nextToken = token;
+                            Token[] queue = preprocInjectedTokens.ToArray();
+                            preprocInjectedTokens.Clear();
                             preprocInjectedTokens.Enqueue(knownToken);
                             preprocInjectedTokens.Enqueue(nextToken);
+                            foreach (Token t in queue)
+                            {
+                                preprocInjectedTokens.Enqueue(t);
+                            }
                             AdvanceToken();
                             if (nextToken.Type == TokenType.DotWord)
                             {
@@ -134,10 +140,6 @@ namespace SPAGS
                             throw new Exception("expecting statement, got: " + knownToken);
                     }
                 default:
-                    if (token.Type == TokenType.KnownWord)
-                    {
-
-                    }
                     Expression expression = AdvanceExpression();
                     switch (token.Type)
                     {

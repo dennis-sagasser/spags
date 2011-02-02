@@ -47,12 +47,6 @@ namespace SPAGS
             Type = type;
         }
         public readonly ExpressionType Type;
-        public object UserData
-        {
-            get { return _userdata; }
-            set { _userdata = value; }
-        }
-        private object _userdata;
         public abstract bool IsConstant();
         public virtual bool TryGetIntValue(out int value) { value = 0; return false; }
         public virtual bool TryGetFloatValue(out double value) { value = 0; return false; }
@@ -82,7 +76,6 @@ namespace SPAGS
 
         public static Expression LogicalNegation(Expression expr)
         {
-            int v;
             switch (expr.Type)
             {
                 case ExpressionType.UnaryOperator:

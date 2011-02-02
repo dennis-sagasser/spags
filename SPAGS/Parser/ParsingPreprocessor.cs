@@ -63,7 +63,6 @@ namespace SPAGS
 
         private Version AdvanceVersion()
         {
-            Version version;
             int start = pos;
             while (pos < endPos && source[pos] != '\n') pos++;
             string versionString = source.Substring(start, pos - start).Trim();
