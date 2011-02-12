@@ -38,6 +38,11 @@ namespace SPAGS
         AllocStringBuffer,
         AllocStruct,
 
+        // SimSynch Specific
+        SimSynchPop,
+        SimSynchPeek,
+        SimSynchStackAugmentedCall,
+
         Custom
     }
     public abstract class Expression : CodeUnit, IUserDataHolder

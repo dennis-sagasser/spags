@@ -15,6 +15,18 @@ namespace SPAGS
         Call,
         Assign,
         VariableDeclaration,
+
+        SimSynchSuspend,
+        SimSynchCallSuspend,
+        SimSynchFinish,
+        SimSynchPush,
+        SimSynchPop,
+        SimSynchUnOp,
+        SimSynchBinOp,
+        SimSynchArrayIndex,
+        SimSynchFieldAccess,
+        SimSynchStackAugmentedCall,
+
         Custom
     }
     public abstract class Statement : CodeUnit, IUserDataHolder
@@ -227,7 +239,7 @@ namespace SPAGS
                 ElseDoThis = elseDoThis;
             }
             public readonly Expression IfThisIsTrue;
-            public readonly Statement ThenDoThis;
+            public Statement ThenDoThis;
             public Statement ElseDoThis;
             public override IEnumerable<Expression> YieldExpressions()
             {
@@ -373,6 +385,28 @@ namespace SPAGS
             }
             public override void WriteTo(TextWriter output, int indent)
             {
+                Function func;
+                List<Expression> parameters;
+                List<Expression> varargs;
+                if (TryGetSimpleCall(out func, out parameters, out varargs))
+                {
+                    output.Write(func.Name + "(");
+                    for (int i = 0; i < parameters.Count; i++)
+                    {
+                        if (i > 0) output.Write(", ");
+                        parameters[i].WriteTo(output);
+                    }
+                    if (varargs != null)
+                    {
+                        for (int i = 0; i < varargs.Count; i++)
+                        {
+                            if (i > 0 || parameters.Count > 0) output.Write(", ");
+                            varargs[i].WriteTo(output);
+                        }
+                    }
+                    output.Write(");");
+                    return;
+                }
                 Target.WriteTo(output);
                 switch(AssignType)
                 {
