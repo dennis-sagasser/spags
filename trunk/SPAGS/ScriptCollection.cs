@@ -185,11 +185,15 @@ function _run_dialog_request (int parmtr) {
             }
             foreach (AGS.Types.RoomHotspot hotspot in room.Hotspots)
             {
-                roomVariables.Add(new Variable(hotspot.Name, hotspotType, null));
+                Variable hsVar = new Variable(hotspot.Name, hotspotType, null);
+                hsVar.UnchangingWhileThreadSuspended = true;
+                roomVariables.Add(hsVar);
             }
             foreach (AGS.Types.RoomObject obj in room.Objects)
             {
-                roomVariables.Add(new Variable(obj.Name, objectType, null));
+                Variable objVar = new Variable(obj.Name, objectType, null);
+                objVar.UnchangingWhileThreadSuspended = true;
+                roomVariables.Add(objVar);
             }
             string scriptText = unloadedRoom.Script.Text;
             parser.Namespace = new NameDictionary(GlobalNamespace);

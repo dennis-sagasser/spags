@@ -42,6 +42,7 @@ namespace SPAGS
         SimSynchPop,
         SimSynchPeek,
         SimSynchStackAugmentedCall,
+        SimSynchVariable,
 
         Custom
     }
@@ -78,6 +79,24 @@ namespace SPAGS
         public abstract ValueType GetValueType();
 
         public abstract bool Equals(Expression ex);
+
+        public virtual bool UnchangingWhileThreadSuspended
+        {
+            get
+            {
+                return this.IsConstant();
+            }
+        }
+
+        public virtual bool ArrayElementUnchangingWhileThreadSuspended(Expression index)
+        {
+            return false;
+        }
+
+        public virtual bool StructFieldUnchangingWhileThreadSuspended(StructMember.Field field)
+        {
+            return false;
+        }
 
         public static Expression LogicalNegation(Expression expr)
         {
@@ -367,6 +386,14 @@ namespace SPAGS
             {
                 return false;
             }
+            public override bool UnchangingWhileThreadSuspended
+            {
+                get
+                {
+                    return Index.UnchangingWhileThreadSuspended
+                        && Target.ArrayElementUnchangingWhileThreadSuspended(Index);
+                }
+            }
             public override bool TryGetSimpleCall(
                 out ActualFunction func,
                 out List<Expression> parameters,
@@ -631,6 +658,10 @@ namespace SPAGS
             {
                 yield return Target;
             }
+            public override bool UnchangingWhileThreadSuspended
+            {
+                get { return Target.StructFieldUnchangingWhileThreadSuspended(TheField); }
+            }
             public override void WriteTo(TextWriter output)
             {
                 Target.WriteTo(output);
@@ -714,6 +745,13 @@ namespace SPAGS
             public override void WriteTo(TextWriter output)
             {
                 output.Write(TheVariable.Name);
+            }
+            public override bool UnchangingWhileThreadSuspended
+            {
+                get
+                {
+                    return TheVariable.UnchangingWhileThreadSuspended;
+                }
             }
             public override bool IsConstant()
             {

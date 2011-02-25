@@ -60,6 +60,7 @@
     <Compile Include="SimSynch\SimSynchFunction.cs" />
     <Compile Include="SimSynch\SimSynchExpression.cs" />
     <Compile Include="SimSynch\SimSynchStatement.cs" />
+    <Compile Include="SimSynch\SimSynchVariable.cs" />
     <Compile Include="Statement.cs" />
     <Compile Include="Token.cs" />
     <Compile Include="Util\EditorUsageException.cs" />

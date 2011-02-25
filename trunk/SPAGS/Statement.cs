@@ -25,6 +25,7 @@ namespace SPAGS
         SimSynchBinOp,
         SimSynchArrayIndex,
         SimSynchFieldAccess,
+        SimSynchQueueCall,
         SimSynchStackAugmentedCall,
 
         Custom

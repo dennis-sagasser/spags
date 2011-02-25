@@ -40,7 +40,7 @@ namespace SPAGS.SimSynch
             return last.ChildStatements[last.ChildStatements.Count - i];
         }
 
-        private void AddCall(Function func, List<Expression> parameters, List<Expression> varargs)
+        private void AddCall(Function func, List<Expression> parameters, List<Expression> varargs, bool ignoreReturnValue)
         {
             SimSynchExpression.StackAugmentedCall call = new SimSynchExpression.StackAugmentedCall();
             call.CallingFunction = func;
@@ -80,8 +80,87 @@ namespace SPAGS.SimSynch
                 }
             }
             SimSynchChunk retChunk = new SimSynchChunk(this, new NameDictionary());
-            AddStatement(new SimSynchStatement.CallSuspend(call, retChunk));
-            Chunks.Add(retChunk);
+            if (ignoreReturnValue)
+            {
+                if (lastChunk.ChildStatements.Count == 0
+                    && call.ParametersUnchangingWhileThreadSuspended
+                    && Chunks.Count > 1)
+                {
+                    SimSynchChunk backChunk = Chunks[Chunks.Count - 2];
+                    if (backChunk.ChildStatements.Count > 0)
+                    {
+                        SimSynchStatement.Suspend suspend =
+                            backChunk.ChildStatements[backChunk.ChildStatements.Count - 1]
+                            as SimSynchStatement.Suspend;
+                        if (suspend != null && suspend.QueuedCalls)
+                        {
+                            backChunk.ChildStatements.Insert(
+                                backChunk.ChildStatements.Count - 1,
+                                new SimSynchStatement.QueueCall(call));
+                            return;
+                        }
+                    }
+                }
+                lastChunk.ChildStatements.Add(new SimSynchStatement.QueueCall(call));
+                lastChunk.ChildStatements.Add(new SimSynchStatement.Suspend(retChunk, true));
+                Chunks.Add(retChunk);
+            }
+            else
+            {
+                lastChunk.ChildStatements.Add(new SimSynchStatement.CallSuspend(call, retChunk));
+                Chunks.Add(retChunk);
+            }
+        }
+
+        private bool LogicalBinOp(Expression.BinaryOperator binop)
+        {
+            SimSynchChunk beforeOpChunk = lastChunk;
+
+            SimSynchChunk firstLeftChunk = new SimSynchChunk(this, new NameDictionary());
+            Chunks.Add(firstLeftChunk);
+            AddExpression(binop.Left);
+            SimSynchChunk lastLeftChunk = lastChunk;
+
+            SimSynchChunk firstRightChunk = new SimSynchChunk(this, new NameDictionary());
+            Chunks.Add(firstRightChunk);
+            firstRightChunk.ChildStatements.Add(new SimSynchStatement.Pop());
+            AddExpression(binop.Right);
+            SimSynchChunk lastRightChunk = lastChunk;
+
+            Chunks.Remove(firstLeftChunk);
+            Chunks.Remove(firstRightChunk);
+
+            if (firstLeftChunk == lastLeftChunk && firstRightChunk == lastRightChunk)
+            {
+                return false;
+            }
+
+            SimSynchChunk afterOpChunk = new SimSynchChunk(this, new NameDictionary());
+
+            Statement whenLeftIsTrue, whenLeftIsFalse;
+
+            if (binop.Token.Type == TokenType.LogicalAnd)
+            {
+                whenLeftIsTrue = firstRightChunk;
+                whenLeftIsFalse = new SimSynchStatement.Suspend(afterOpChunk, false);
+            }
+            else
+            {
+                whenLeftIsTrue = new SimSynchStatement.Suspend(afterOpChunk, false);
+                whenLeftIsFalse = firstRightChunk;
+            }
+
+            Statement.If testLeft = new Statement.If(
+                new SimSynchExpression.Peek(ValueType.Int),
+                whenLeftIsTrue,
+                whenLeftIsFalse);
+
+            lastLeftChunk.ChildStatements.Add(testLeft);
+
+            lastRightChunk.ChildStatements.Add(new SimSynchStatement.Suspend(afterOpChunk, false));
+            beforeOpChunk.ChildStatements.AddRange(firstLeftChunk.ChildStatements);
+            Chunks.Add(afterOpChunk);
+            return true;
         }
 
         private void AddExpression(Expression expr)
@@ -90,7 +169,7 @@ namespace SPAGS.SimSynch
             List<Expression> callParams, callVarargs;
             if (expr.TryGetSimpleCall(out callFunc, out callParams, out callVarargs))
             {
-                AddCall(callFunc, callParams, callVarargs);
+                AddCall(callFunc, callParams, callVarargs, false);
                 return;
             }
             switch (expr.Type)
@@ -105,9 +184,22 @@ namespace SPAGS.SimSynch
                 case ExpressionType.IntegerLiteral:
                 case ExpressionType.Null:
                 case ExpressionType.StringLiteral:
-                case ExpressionType.Variable:
                     AddStatement(new SimSynchStatement.Push(expr));
                     break;
+                case ExpressionType.Variable:
+                    Expression.Variable varExpr = (Expression.Variable)expr;
+                    if (varExpr.TheVariable is SPAGS.LocalVariable)
+                    {
+                        AddStatement(new SimSynchStatement.Push(
+                            new SimSynchExpression.Variable(
+                                (SPAGS.LocalVariable)varExpr.TheVariable)));
+                        break;
+                    }
+                    else
+                    {
+                        AddStatement(new SimSynchStatement.Push(expr));
+                        break;
+                    }
                 case ExpressionType.ArrayIndex:
                     Expression.ArrayIndex indexer = (Expression.ArrayIndex)expr;
                     AddExpression(indexer.Target);
@@ -129,37 +221,12 @@ namespace SPAGS.SimSynch
                     switch (binop.Token.Type)
                     {
                         case TokenType.LogicalAnd:
-                            SimSynchChunk preAndChunk = lastChunk;
-                            SimSynchChunk firstAndChunk = new SimSynchChunk(this, new NameDictionary());
-                            SimSynchChunk firstPopChunk = new SimSynchChunk(this, new NameDictionary());
-                            SimSynchChunk afterAndChunk = new SimSynchChunk(this, new NameDictionary());
-                            Chunks.Add(firstAndChunk);
-                            AddExpression(binop.Left);
-                            SimSynchChunk lastAndChunk = lastChunk;
-                            Statement.If andTest = new Statement.If(
-                                new SimSynchExpression.Peek(ValueType.Int),
-                                new SimSynchStatement.Suspend(firstPopChunk),
-                                new SimSynchStatement.Suspend(afterAndChunk));
-                            lastAndChunk.ChildStatements.Add(andTest);
-                            Chunks.Add(firstPopChunk);
-                            firstPopChunk.ChildStatements.Add(new SimSynchStatement.Pop());
-                            AddExpression(binop.Right);
-                            lastChunk.ChildStatements.Add(new SimSynchStatement.Suspend(afterAndChunk));
-                            SimSynchChunk lastPopChunk = lastChunk;
-                            if (firstAndChunk == lastAndChunk && firstPopChunk == lastPopChunk)
+                        case TokenType.LogicalOr:
+                            if (!LogicalBinOp(binop))
                             {
-                                Chunks.Remove(firstAndChunk);
-                                Chunks.Remove(firstPopChunk);
                                 goto default;
                             }
-                            else
-                            {
-                                Chunks.Remove(firstAndChunk);
-                                preAndChunk.ChildStatements.AddRange(firstAndChunk.ChildStatements);
-                                Chunks.Add(afterAndChunk);
-                            }
-                            break;
-                        case TokenType.LogicalOr:
+                            /*
                             SimSynchChunk preOrChunk = lastChunk;
                             SimSynchChunk firstOrChunk = new SimSynchChunk(this, new NameDictionary());
                             SimSynchChunk firstOrPopChunk = new SimSynchChunk(this, new NameDictionary());
@@ -189,6 +256,7 @@ namespace SPAGS.SimSynch
                                 preOrChunk.ChildStatements.AddRange(firstOrChunk.ChildStatements);
                                 Chunks.Add(afterOrChunk);
                             }
+                             */
                             break;
                         default:
                             AddExpression(binop.Left);
@@ -269,22 +337,28 @@ namespace SPAGS.SimSynch
             return new SimSynchExpression.Pop(valueType);
         }
 
+        private List<Variable> localVariables = new List<Variable>();
+        private Dictionary<Variable,SimSynchExpression.Variable> localVariableNames
+            = new Dictionary<Variable,SimSynchExpression.Variable>();
+        private Dictionary<string,SimSynchExpression.Variable> blockedLocalVars
+            = new Dictionary<string,SimSynchExpression.Variable>();
+
         private void AddStatement(Statement stmt)
         {
             Function callFunc;
             List<Expression> callParams, callVarargs;
             if (stmt.TryGetSimpleCall(out callFunc, out callParams, out callVarargs))
             {
-                AddCall(callFunc, callParams, callVarargs);
-                lastChunk.ChildStatements.Add(new SimSynchStatement.Pop());
+                AddCall(callFunc, callParams, callVarargs, true);
                 return;
             }
             switch (stmt.Type)
             {
                 case StatementType.VariableDeclaration:
                     Statement.VariableDeclaration vardef = (Statement.VariableDeclaration)stmt;
-                    foreach (Variable variable in vardef.Variables)
+                    foreach (LocalVariable variable in vardef.Variables)
                     {
+                        localVariables.Add(variable);
                         if (variable.InitialValue == null)
                         {
                             AddExpression(variable.Type.CreateDefaultValueExpression());
@@ -295,7 +369,7 @@ namespace SPAGS.SimSynch
                         }
                         lastChunk.ChildStatements.Add(
                             new Statement.Assign(
-                                new Expression.Variable(variable),
+                                new SimSynchExpression.Variable(variable),
                                 Pop(variable.Type),
                                 TokenType.Assign));
                     }
@@ -304,8 +378,16 @@ namespace SPAGS.SimSynch
                     Statement.Assign assign = (Statement.Assign)stmt;
                     Expression assignValue = assign.SimpleAssignValue();
                     AddExpression(assignValue);
+                    Expression target = assign.Target;
+                    // TODO: fields on local variables?
+                    Expression.Variable targetVarExpr = target as Expression.Variable;
+                    if (targetVarExpr != null && targetVarExpr.TheVariable is LocalVariable)
+                    {
+                        target = new SimSynchExpression.Variable(
+                            (LocalVariable)targetVarExpr.TheVariable);
+                    }
                     lastChunk.ChildStatements.Add(
-                        new Statement.Assign(assign.Target,
+                        new Statement.Assign(target,
                             Pop(assignValue.GetValueType()),
                             TokenType.Assign));
                     break;
@@ -325,7 +407,7 @@ namespace SPAGS.SimSynch
                     lastChunk.ChildStatements.Add(
                         new Statement.If(
                             Expression.LogicalNegation(Pop(ValueType.Int)),
-                            new SimSynchStatement.Suspend(endLoopChunk),
+                            new SimSynchStatement.Suspend(endLoopChunk, false),
                             null));
                     AddStatement(loop.KeepDoingThis);
                     if (lastChunk == firstLoopChunk)
@@ -342,9 +424,9 @@ namespace SPAGS.SimSynch
                     }
                     else
                     {
-                        lastChunk.ChildStatements.Add(new SimSynchStatement.Suspend(firstLoopChunk));
+                        lastChunk.ChildStatements.Add(new SimSynchStatement.Suspend(firstLoopChunk, false));
                         Chunks.Add(endLoopChunk);
-                        preLoopChunk.ChildStatements.Add(new SimSynchStatement.Suspend(firstLoopChunk));
+                        preLoopChunk.ChildStatements.Add(new SimSynchStatement.Suspend(firstLoopChunk, false));
                     }
                     break;
                 case StatementType.If:
@@ -395,7 +477,7 @@ namespace SPAGS.SimSynch
                          */
                         if (!lastThenChunk.Returns())
                         {
-                            lastThenChunk.ChildStatements.Add(new SimSynchStatement.Suspend(endChunk));
+                            lastThenChunk.ChildStatements.Add(new SimSynchStatement.Suspend(endChunk, false));
                         }
                         if (lastElseChunk == null)
                         {
@@ -404,7 +486,7 @@ namespace SPAGS.SimSynch
                         }
                         if (!lastElseChunk.Returns())
                         {
-                            lastElseChunk.ChildStatements.Add(new SimSynchStatement.Suspend(endChunk));
+                            lastElseChunk.ChildStatements.Add(new SimSynchStatement.Suspend(endChunk, false));
                         }
 
                         Chunks.Add(endChunk);
@@ -446,6 +528,13 @@ namespace SPAGS.SimSynch
         {
             SimSynchFunction ssf = new SimSynchFunction(func);
 
+            for (int j = 0; j < func.ParameterVariables.Count; j++)
+            {
+                SPAGS.Parameter param = func.ParameterVariables[j];
+                ssf.localVariables.Add(param);
+            }
+
+
             SimSynchChunk mainChunk = new SimSynchChunk(ssf, func.Body.Scope);
             ssf.Chunks.Add(mainChunk);
 
@@ -476,11 +565,15 @@ namespace SPAGS.SimSynch
                     SimSynchStatement.Suspend suspend = (SimSynchStatement.Suspend)chunk.ChildStatements[0];
                     chunk.Redirect = suspend.NextChunk;
                     ssf.Chunks.RemoveAt(i);
+                    continue;
                 }
-                else
+                Expression expr;
+                if (chunk.TryGetFinish(out expr) && i > 0)
                 {
-                    i++;
+                    ssf.Chunks.RemoveAt(i);
+                    continue;
                 }
+                i++;
             }
 
             return ssf;
@@ -499,13 +592,28 @@ namespace SPAGS.SimSynch
         public void WriteTo(TextWriter output)
         {
             output.Write("@simsynch " + OriginalFunction.Signature.ReturnType
-                + " " + OriginalFunction.Name + "(");
-            // TODO: parameters
-            output.Write(") {");
+                + " " + OriginalFunction.Name + " {");
+            foreach (Variable v in localVariables)
+            {
+                output.WriteLine();
+                output.Write("\t" + v.Type.Name + " " + v.Name + ";");
+            }
             for (int i = 0; i < Chunks.Count; i++)
             {
                 output.WriteLine();
-                output.Write("\t@entrypoint_" + i + ": ");
+                output.Write("\t@entrypoint_" + i);
+                if (i == 0)
+                {
+                    output.Write("(");
+                    for (int j = 0; j < OriginalFunction.ParameterVariables.Count; j++)
+                    {
+                        if (j > 0) output.Write(", ");
+                        SPAGS.Parameter param = OriginalFunction.ParameterVariables[j];
+                        output.Write("@in " + param.Name);
+                    }
+                    output.Write(")");
+                }
+                output.Write(": ");
                 Chunks[i].WriteTo(output, 1);
             }
             output.WriteLine();

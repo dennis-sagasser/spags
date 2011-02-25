@@ -24,10 +24,10 @@ namespace SPAGS.SimSynch
             public SimSynchChunk ResumeChunk;
             public override void WriteTo(TextWriter output, int indent)
             {
-                output.Write("@suspend(@entrypoint_" + ResumeChunk.ID + ", " + CallExpression.CallingFunction.Name);
+                output.Write("@afterCallPushResult<" + CallExpression.GetValueType().Name + ">(@entrypoint_" + ResumeChunk.ID + ", " + CallExpression.CallingFunction.Name);
                 if (CallExpression.StackVarargCount > 0)
                 {
-                    output.Write(", @stackparams(" + CallExpression.StackParameterCount + ", " + CallExpression.StackVarargCount + ")");
+                    output.Write(", @multipop(" + (CallExpression.StackParameterCount + CallExpression.StackVarargCount) + ")...");
                     foreach (Expression directVararg in CallExpression.DirectVarargs)
                     {
                         output.Write(", ");
@@ -38,7 +38,52 @@ namespace SPAGS.SimSynch
                 {
                     if (CallExpression.StackParameterCount > 0)
                     {
-                        output.Write(", @stackparams(" + CallExpression.StackParameterCount + ")");
+                        output.Write(", @multipop(" + CallExpression.StackParameterCount + ")...");
+                    }
+                    foreach (Expression directParam in CallExpression.DirectParameters)
+                    {
+                        output.Write(", ");
+                        directParam.WriteTo(output);
+                    }
+                    foreach (Expression directVararg in CallExpression.DirectVarargs)
+                    {
+                        output.Write(", ");
+                        directVararg.WriteTo(output);
+                    }
+                }
+                output.Write(");");
+            }
+            public override bool Returns()
+            {
+                return true;
+            }
+        }
+
+        public class QueueCall : SimSynchStatement
+        {
+            public QueueCall(SimSynchExpression.StackAugmentedCall callExpr)
+                : base(StatementType.SimSynchCallSuspend)
+            {
+                CallExpression = callExpr;
+            }
+            public SimSynchExpression.StackAugmentedCall CallExpression;
+            public override void WriteTo(TextWriter output, int indent)
+            {
+                output.Write("@queueCall(" + CallExpression.CallingFunction.Name);
+                if (CallExpression.StackVarargCount > 0)
+                {
+                    output.Write(", @multipop(" + (CallExpression.StackParameterCount + CallExpression.StackVarargCount) + ")...");
+                    foreach (Expression directVararg in CallExpression.DirectVarargs)
+                    {
+                        output.Write(", ");
+                        directVararg.WriteTo(output);
+                    }
+                }
+                else
+                {
+                    if (CallExpression.StackParameterCount > 0)
+                    {
+                        output.Write(", @multipop(" + CallExpression.StackParameterCount + ")...");
                     }
                     foreach (Expression directParam in CallExpression.DirectParameters)
                     {
@@ -62,18 +107,37 @@ namespace SPAGS.SimSynch
         public class Suspend : SimSynchStatement
         {
             public Suspend(SimSynchChunk nextChunk)
+                : this(nextChunk, true)
+            {
+            }
+            public Suspend(SimSynchChunk nextChunk, bool queuedCalls)
                 : base(StatementType.SimSynchSuspend)
             {
                 NextChunk = nextChunk;
+                QueuedCalls = queuedCalls;
             }
             public Suspend()
                 : this(null)
             {
             }
             public SimSynchChunk NextChunk;
+            public bool QueuedCalls;
             public override void WriteTo(TextWriter output, int indent)
             {
-                output.Write("@suspend(@entrypoint_" + NextChunk.ID + ");");
+                Expression finishValue;
+                if (NextChunk.TryGetFinish(out finishValue))
+                {
+                    new Finish(finishValue).WriteTo(output, indent);
+                    return;
+                }
+                if (QueuedCalls)
+                {
+                    output.Write("@afterQueuedCalls(@entrypoint_" + NextChunk.ID + ");");
+                }
+                else
+                {
+                    output.Write("@jump(@entrypoint_" + NextChunk.ID + ");");
+                }
             }
             public override bool Returns()
             {
@@ -91,12 +155,16 @@ namespace SPAGS.SimSynch
             public Expression ReturnValue;
             public override void WriteTo(TextWriter output, int indent)
             {
-                output.Write("@finish(");
-                if (ReturnValue != null)
+                if (ReturnValue == null)
                 {
-                    ReturnValue.WriteTo(output);
+                    output.Write("return;");
                 }
-                output.Write(");");
+                else
+                {
+                    output.Write("return ");
+                    ReturnValue.WriteTo(output);
+                    output.Write(";");
+                }
             }
             public override bool Returns()
             {
@@ -114,7 +182,7 @@ namespace SPAGS.SimSynch
             public Expression Value;
             public override void WriteTo(TextWriter output, int indent)
             {
-                output.Write("@push(");
+                output.Write("@push<" + Value.GetValueType().Name + ">(");
                 Value.WriteTo(output);
                 output.Write(");");
             }
@@ -146,7 +214,7 @@ namespace SPAGS.SimSynch
             public ValueType LeftType, RightType;
             public override void WriteTo(TextWriter output, int indent)
             {
-                output.Write("@stackbinop(\"" + OpToken + "\");");
+                output.Write("@stackbinop " + OpToken + ";");
             }
         }
 

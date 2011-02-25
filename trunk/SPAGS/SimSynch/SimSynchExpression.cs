@@ -62,6 +62,35 @@ namespace SPAGS.SimSynch
                 return false;
             }
         }
+        public new class Variable : SimSynchExpression
+        {
+            public Variable(SPAGS.LocalVariable variable)
+                : base(ExpressionType.Variable)
+            {
+                TheVariable = variable;
+            }
+            public readonly SPAGS.LocalVariable TheVariable;
+            public override bool UnchangingWhileThreadSuspended
+            {
+                get { return true; }
+            }
+            public override ValueType GetValueType()
+            {
+                return TheVariable.Type;
+            }
+            public override void WriteTo(TextWriter output)
+            {
+                output.Write(TheVariable.Name);
+            }
+            public override bool Equals(Expression ex)
+            {
+                return (ex is Variable) && (((Variable)ex).TheVariable == this.TheVariable);
+            }
+            public override bool IsConstant()
+            {
+                return false;
+            }
+        }
         public class StackAugmentedCall : SimSynchExpression
         {
             public StackAugmentedCall()
@@ -73,13 +102,35 @@ namespace SPAGS.SimSynch
             public int StackVarargCount;
             public List<Expression> DirectParameters = new List<Expression>();
             public List<Expression> DirectVarargs = new List<Expression>();
+            public bool ParametersUnchangingWhileThreadSuspended
+            {
+                get
+                {
+                    if (StackParameterCount > 0 || StackVarargCount > 0) return false;
+                    foreach (Expression directParam in DirectParameters)
+                    {
+                        if (!directParam.UnchangingWhileThreadSuspended)
+                        {
+                            return false;
+                        }
+                    }
+                    foreach (Expression directVararg in DirectVarargs)
+                    {
+                        if (!directVararg.UnchangingWhileThreadSuspended)
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }
             public override void WriteTo(TextWriter output)
             {
                 output.Write(CallingFunction.Name);
                 output.Write("(");
                 if (StackVarargCount > 0)
                 {
-                    output.Write("@stackparams(" + StackParameterCount + ", " + StackVarargCount + ")");
+                    output.Write("@multipop(" + (StackParameterCount + StackVarargCount) + ")...");
                     for (int i = 0; i < DirectVarargs.Count; i++)
                     {
                         output.Write(", ");
@@ -90,7 +141,7 @@ namespace SPAGS.SimSynch
                 {
                     if (StackParameterCount > 0)
                     {
-                        output.Write("@stackparams(" + StackParameterCount + ")");
+                        output.Write("@multipop(" + StackParameterCount + ")...");
                     }
                     for (int i = 0; i < DirectParameters.Count; i++)
                     {
