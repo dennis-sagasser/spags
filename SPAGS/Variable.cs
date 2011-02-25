@@ -26,6 +26,27 @@ namespace SPAGS
         public string Name { get { return name; } }
         public Expression InitialValue;
         public NameHolderType NameHolderType { get { return NameHolderType.Variable; } }
+        protected bool? overrideUnchangingWhileThreadSuspended = null;
+        public virtual bool UnchangingWhileThreadSuspended
+        {
+            get
+            {
+                if (overrideUnchangingWhileThreadSuspended != null)
+                {
+                    return (bool)overrideUnchangingWhileThreadSuspended;
+                }
+                // this is true at time of writing, may change in the future
+                if (OwnerScript == null)
+                {
+                    return true;
+                }
+                return false;
+            }
+            set
+            {
+                overrideUnchangingWhileThreadSuspended = value;
+            }
+        }
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
@@ -64,12 +85,42 @@ namespace SPAGS
         }
         public Function OwnerFunction;
         public Statement.Block OwnerScope;
+        public override bool UnchangingWhileThreadSuspended
+        {
+            get
+            {
+                if (overrideUnchangingWhileThreadSuspended != null)
+                {
+                    return (bool)overrideUnchangingWhileThreadSuspended;
+                }
+                return true;
+            }
+            set
+            {
+                base.UnchangingWhileThreadSuspended = value;
+            }
+        }
     }
-    public class Parameter : Variable
+    public class Parameter : LocalVariable
     {
         public Parameter(string name, ValueType valueType)
             : base(name, valueType, null)
         {
+        }
+        public override bool UnchangingWhileThreadSuspended
+        {
+            get
+            {
+                if (overrideUnchangingWhileThreadSuspended != null)
+                {
+                    return (bool)overrideUnchangingWhileThreadSuspended;
+                }
+                return true;
+            }
+            set
+            {
+                base.UnchangingWhileThreadSuspended = value;
+            }
         }
     }
     public class ScriptVariable : Variable

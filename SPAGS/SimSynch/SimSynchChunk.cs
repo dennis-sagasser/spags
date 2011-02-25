@@ -11,6 +11,24 @@ namespace SPAGS.SimSynch
         {
             ParentFunction = func;
         }
+        public bool TryGetFinish(out Expression expr)
+        {
+            if (Redirect != null)
+            {
+                return Redirect.TryGetFinish(out expr);
+            }
+            if (ChildStatements.Count == 1)
+            {
+                SimSynchStatement.Finish fin = ChildStatements[0] as SimSynchStatement.Finish;
+                if (fin != null)
+                {
+                    expr = fin.ReturnValue;
+                    return expr.UnchangingWhileThreadSuspended;
+                }
+            }
+            expr = null;
+            return false;
+        }
         public SimSynchFunction ParentFunction;
         public int ID
         {
